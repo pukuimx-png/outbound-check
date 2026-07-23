@@ -473,7 +473,6 @@
                 });
             }
 
-            // 确认对话框按钮事件绑定（一次性，不随语言变化）
             document.getElementById('confirmOkBtn').addEventListener('click', function() {
                 document.getElementById('confirmModal').style.display = 'none';
                 if (confirmResolve) confirmResolve(true);
@@ -497,11 +496,10 @@
                     console.log('🔄 更换身份按钮被点击');
                     showOperatorModal(true);
                 };
-                // 重新绑定模态框确认/取消（虽然未用onclick，但文本已更新）
+                // 重新绑定模态框确认/取消
                 document.getElementById('confirmOkBtn').textContent = t('confirm_ok');
                 document.getElementById('confirmCancelBtn').textContent = t('confirm_cancel');
                 document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
-                // 重新绑定身份验证模态框按钮（防止被覆盖）
                 document.getElementById('confirmOperatorBtn').onclick = confirmIdentity;
                 document.getElementById('cancelOperatorBtn').onclick = function() {
                     hideOperatorModal();
@@ -1021,17 +1019,37 @@
                 }
             }
 
-            // ---- 发送扫描 ----
+            // ---- JSON 解析辅助 ----
+            function extractCodeFromInput(input) {
+                if (!input) return input;
+                const trimmed = input.trim();
+                try {
+                    const obj = JSON.parse(trimmed);
+                    if (obj && typeof obj === 'object' && obj.id) {
+                        return obj.id;
+                    }
+                    return trimmed;
+                } catch (e) {
+                    return trimmed;
+                }
+            }
+
+            // ---- 发送扫描（支持 JSON 二维码） ----
             function sendScan(code) {
                 if (!code || code.trim() === '') {
                     showToast(t('invalid_scan'), 'warning');
                     return;
                 }
+                const raw = code.trim();
+                const extracted = extractCodeFromInput(raw);
+                console.log('📥 原始输入:', raw, '→ 提取后:', extracted);
+
                 if (!ws || ws.readyState !== WebSocket.OPEN) {
                     showToast(t('server_error'), 'error');
                     return;
                 }
-                const trimmed = code.trim();
+
+                const trimmed = extracted;
                 if (localMode === 'main') {
                     if (pendingKeys.includes(trimmed)) {
                         showToast(t('already_added', { key: trimmed }), 'warning', 2000);
@@ -1780,13 +1798,13 @@
                     showOperatorModal(false);
                 }
 
-                // 绑定更换身份按钮（使用 onclick 确保不会被覆盖）
+                // 绑定更换身份按钮
                 document.getElementById('changeIdentityBtn').onclick = function() {
                     console.log('🔄 更换身份按钮被点击');
                     showOperatorModal(true);
                 };
 
-                // 绑定身份验证模态框按钮（使用 onclick 确保稳定）
+                // 绑定身份验证模态框按钮
                 document.getElementById('confirmOperatorBtn').onclick = confirmIdentity;
                 document.getElementById('cancelOperatorBtn').onclick = function() {
                     hideOperatorModal();
