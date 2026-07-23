@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出库核对系统 - 主码/子码两阶段</title>
+    <!-- 使用 SheetJS 解析 Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
+    <style>
+        /* ===== 全局重置 & 变量 ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #dbeafe;
+            --success: #16a34a;
+            --success-light: #dcfce7;
+            --danger: #dc2626;
+            --danger-light: #fee2e2;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --radius: 12px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            --transition: 0.2s ease;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            padding: 24px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .app {
+            max-width: 1200px;
+            width: 100%;
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 32px 36px 48px;
+            transition: 0.3s;
+        }
+
+        /* ===== 头部 ===== */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+            border-bottom: 2px solid var(--gray-100);
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header h1 span {
+            background: var(--primary);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 2px 12px;
+            border-radius: 30px;
+        }
+        .header .badge {
+            font-size: 14px;
+            color: var(--gray-500);
+            background: var(--gray-100);
+            padding: 6px 16px;
+            border-radius: 30px;
+        }
+
+        /* ===== 上传区域 ===== */
+        .upload-zone {
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius);
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--gray-50);
+            margin-bottom: 28px;
+            position: relative;
+        }
+        .upload-zone:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            transform: scale(1.01);
+        }
+        .upload-zone .icon {
+            font-size: 52px;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .upload-zone h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+        .upload-zone p {
+            color: var(--gray-500);
+            font-size: 14px;
+            margin-top: 6px;
+        }
+        .upload-zone .hint {
+            font-size: 13px;
+            color: var(--gray-400);
+            margin-top: 10px;
+        }
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .upload-zone .file-name {
+            margin-top: 14px;
+            font-weight: 500;
+            color: var(--primary);
+            background: #fff;
+            display: inline-block;
+            padding: 4px 18px;
+            border-radius: 30px;
+            border: 1px solid var(--gray-200);
+        }
+
+        /* ===== 工具栏 ===== */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 16px 20px;
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+        }
+        .toolbar .stats {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-right: auto;
+        }
+        .toolbar .stats strong {
+            color: var(--primary);
+            font-size: 18px;
+        }
+        .toolbar .stats .sub {
+            font-weight: 400;
+            color: var(--gray-500);
+            font-size: 13px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            background: #fff;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-200);
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: var(--gray-100);
+            transform: translateY(-1px);
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+        }
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+            border-color: var(--success);
+        }
+        .btn-success:hover {
+            background: #15803d;
+            border-color: #15803d;
+        }
+        .btn-warning {
+            background: var(--warning);
+            color: #fff;
+            border-color: var(--warning);
+        }
+        .btn-warning:hover {
+            background: #d97706;
+            border-color: #d97706;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--gray-300);
+        }
+        .btn-outline:hover {
+            background: var(--gray-100);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(0.3);
+        }
+
+        /* ===== 扫描模式指示 ===== */
+        .mode-indicator {
+            background: var(--gray-100);
+            border-radius: var(--radius);
+            padding: 12px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 24px;
+            border-left: 5px solid var(--primary);
+        }
+        .mode-indicator .mode-tag {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .mode-indicator .mode-tag.main {
+            color: var(--primary);
+        }
+        .mode-indicator .mode-tag.sub {
+            color: var(--success);
+        }
+        .mode-indicator .info-item {
+            font-size: 14px;
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .mode-indicator .info-item .value {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        .mode-indicator .info-item .badge-count {
+            background: var(--primary);
+            color: #fff;
+            padding: 0 10px;
+            border-radius: 30px;
+            font-size: 13px;
+        }
+        .mode-indicator .info-item .badge-progress {
+            background: var(--success);
+            color: #fff;
+            padding: 0 10px;
+            border-radius: 30px;
+            font-size: 13px;
+        }
+        .mode-indicator .selected-keys {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+        .mode-indicator .selected-keys .key-tag {
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 0 10px;
+            border-radius: 30px;
+            font-weight: 500;
+        }
+
+        /* ===== 扫描栏 ===== */
+        .scan-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: #fff;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .scan-bar label {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--gray-700);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .scan-bar label .badge-scan {
+            background: var(--success-light);
+            color: var(--success);
+            font-size: 12px;
+            padding: 0 10px;
+            border-radius: 30px;
+            font-weight: 500;
+        }
+        .scan-bar input {
+            flex: 1;
+            min-width: 180px;
+            padding: 10px 16px;
+            border: 1px solid var(--gray-300);
+            border-radius: 30px;
+            font-size: 16px;
+            outline: none;
+            transition: var(--transition);
+            font-family: monospace;
+            background: var(--gray-50);
+        }
+        .scan-bar input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            background: #fff;
+        }
+        .scan-bar input::placeholder {
+            color: var(--gray-400);
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .scan-bar .scan-status {
+            font-size: 14px;
+            color: var(--gray-500);
+            min-width: 120px;
+        }
+        .scan-bar .scan-status .match {
+            color: var(--success);
+            font-weight: 600;
+        }
+        .scan-bar .scan-status .no-match {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        /* ===== 过滤选项 ===== */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+            padding: 8px 0;
+        }
+        .filter-bar label {
+            font-size: 14px;
+            color: var(--gray-600);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .filter-bar input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .filter-bar .filter-tag {
+            font-size: 12px;
+            background: var(--gray-200);
+            padding: 2px 12px;
+            border-radius: 30px;
+            color: var(--gray-600);
+        }
+
+        /* ===== 清单容器 ===== */
+        .list-container {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #fff;
+        }
+        .list-header {
+            display: grid;
+            grid-template-columns: 50px 1fr 90px 100px;
+            background: var(--gray-100);
+            padding: 12px 18px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--gray-600);
+            border-bottom: 1px solid var(--gray-200);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .list-header .col-status {
+            text-align: center;
+        }
+        .list-body {
+            max-height: 580px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .list-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        .list-body::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 10px;
+        }
+        .list-body::-webkit-scrollbar-track {
+            background: var(--gray-50);
+        }
+
+        /* ===== 清单条目 ===== */
+        .list-item {
+            display: grid;
+            grid-template-columns: 50px 1fr 90px 100px;
+            padding: 8px 18px;
+            border-bottom: 1px solid var(--gray-100);
+            align-items: center;
+            transition: var(--transition);
+            font-size: 14px;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+        }
+        .list-item:hover {
+            background: var(--gray-50);
+        }
+        .list-item .idx {
+            color: var(--gray-400);
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .list-item .code {
+            font-weight: 500;
+            color: var(--gray-800);
+            word-break: break-all;
+            font-size: 14px;
+        }
+        .list-item .code .prefix-highlight {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .list-item .type-tag {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 30px;
+            text-align: center;
+            background: var(--gray-200);
+            color: var(--gray-600);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            letter-spacing: 0.2px;
+        }
+        .list-item .type-tag.fba {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .list-item .type-tag.custom {
+            background: #fef3c7;
+            color: #b45309;
+        }
+        .list-item .status-cell {
+            text-align: center;
+            font-size: 20px;
+            line-height: 1;
+        }
+        .list-item .status-cell .scanned {
+            color: var(--success);
+        }
+        .list-item .status-cell .pending {
+            color: var(--gray-300);
+        }
+        .list-item .status-cell .group-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-500);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .list-item.group-header-item {
+            background: var(--gray-50);
+            border-bottom: 2px solid var(--gray-200);
+        }
+        .list-item.group-header-item .code {
+            font-weight: 700;
+            color: var(--gray-800);
+            font-size: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .list-item.group-header-item .type-tag {
+            background: var(--gray-300);
+            color: var(--gray-700);
+            font-weight: 700;
+        }
+        .list-item.scanned {
+            background: var(--success-light) !important;
+        }
+        .list-item.scanned .code {
+            color: var(--success);
+        }
+        .list-item.scanned .idx {
+            color: var(--success);
+        }
+        /* 高亮选中的主码分组 */
+        .list-item.active-group {
+            background: var(--primary-light) !important;
+        }
+        .list-item.active-group .code {
+            color: var(--primary-dark);
+        }
+
+        /* ===== 空状态 ===== */
+        .empty-state {
+            padding: 60px 24px;
+            text-align: center;
+            color: var(--gray-400);
+        }
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .empty-state h4 {
+            font-size: 18px;
+            color: var(--gray-600);
+            margin-bottom: 4px;
+        }
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        /* ===== Toast 消息 ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 14px 28px;
+            border-radius: var(--radius);
+            background: var(--gray-900);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.35s ease;
+            z-index: 999;
+            max-width: 420px;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success {
+            background: var(--success);
+        }
+        .toast.error {
+            background: var(--danger);
+        }
+        .toast.warning {
+            background: var(--warning);
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 768px) {
+            .app {
+                padding: 16px;
+            }
+            .header h1 {
+                font-size: 20px;
+            }
+            .upload-zone {
+                padding: 32px 16px;
+            }
+            .upload-zone .icon {
+                font-size: 36px;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .toolbar .stats {
+                margin-right: 0;
+                text-align: center;
+            }
+            .btn {
+                justify-content: center;
+            }
+            .scan-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .scan-bar input {
+                min-width: unset;
+            }
+            .list-header {
+                grid-template-columns: 35px 1fr 60px 70px;
+                font-size: 11px;
+                padding: 10px 12px;
+            }
+            .list-item {
+                grid-template-columns: 35px 1fr 60px 70px;
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+            .list-item .type-tag {
+                font-size: 10px;
+                padding: 1px 6px;
+            }
+            .filter-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .mode-indicator {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .toast {
+                left: 16px;
+                right: 16px;
+                bottom: 16px;
+                max-width: unset;
+            }
+        }
+        @media (max-width: 480px) {
+            .list-header {
+                grid-template-columns: 25px 1fr 50px 50px;
+                font-size: 10px;
+                padding: 8px 8px;
+            }
+            .list-item {
+                grid-template-columns: 25px 1fr 50px 50px;
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+            .list-item .idx {
+                font-size: 11px;
+            }
+            .list-item .status-cell {
+                font-size: 16px;
+            }
+        }
+
+        .list-body {
+            scrollbar-width: thin;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .group-header-item .code .arrow {
+            margin-right: 8px;
+            font-size: 14px;
+            color: var(--gray-400);
+        }
+        .group-header-item .code .count-badge {
+            background: var(--primary);
+            color: #fff;
+            font-size: 12px;
+            padding: 0 10px;
+            border-radius: 30px;
+            margin-left: 10px;
+            font-weight: 600;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app" id="app">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>
+                📦 出库核对系统
+                <span>两阶段</span>
+            </h1>
+            <span class="badge">主码→子码 流程</span>
+        </div>
+
+        <!-- 上传区域 -->
+        <div class="upload-zone" id="uploadZone">
+            <span class="icon">📂</span>
+            <h3>点击或拖拽上传出库表</h3>
+            <p>支持 .xlsx / .xls 格式</p>
+            <div class="hint">系统将自动解析 K列 (FBA货件ID) 和 AS列 (自定义箱条码)</div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
+            <div class="file-name" id="fileName" style="display:none;"></div>
+        </div>
+
+        <!-- 模式指示器 -->
+        <div class="mode-indicator" id="modeIndicator" style="display:none;">
+            <span class="mode-tag main" id="modeTag">🔵 主码扫描模式</span>
+            <span class="info-item">已选主码: <span class="value" id="selectedKeysDisplay">(无)</span></span>
+            <span class="info-item">总箱数: <span class="value" id="totalBoxCount">0</span></span>
+            <span class="info-item" id="subProgressItem" style="display:none;">子码进度: <span class="value" id="subProgress">0 / 0</span></span>
+            <div style="flex:1;text-align:right;">
+                <button class="btn btn-warning" id="btnEndMain" disabled>✅ 结束主码扫描</button>
+                <button class="btn btn-outline" id="btnResetBatch">🔄 重置当前批次</button>
+            </div>
+        </div>
+
+        <!-- 扫描栏 -->
+        <div class="scan-bar" id="scanBar" style="display:none;">
+            <label>
+                🔍 扫描输入
+                <span class="badge-scan" id="scanProgress">0 / 0</span>
+            </label>
+            <input type="text" id="scanInput" placeholder="扫描条码后按 Enter ..." autocomplete="off" spellcheck="false">
+            <span class="scan-status" id="scanStatus">等待扫描</span>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="toolbar" id="toolbar" style="display:none;">
+            <div class="stats">
+                📋 复核清单 &nbsp;
+                <strong id="totalGroups">0</strong> 个分组
+                <span class="sub">·</span>
+                <span id="totalItems">0</span> 个条目
+                <span class="sub">·</span>
+                <span id="scannedCount">0</span> 已扫描
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-success" id="btnExportTxt">📄 导出TXT</button>
+                <button class="btn btn-primary" id="btnExportExcel">📊 导出Excel</button>
+                <button class="btn btn-outline" id="btnCopy">📋 复制</button>
+                <button class="btn btn-outline" id="btnResetScan">🔄 重置所有扫描</button>
+            </div>
+        </div>
+
+        <!-- 过滤选项 -->
+        <div class="filter-bar" id="filterBar" style="display:none;">
+            <label>
+                <input type="checkbox" id="filterCanceled" checked>
+                排除「已取消」的行
+            </label>
+            <label>
+                <input type="checkbox" id="filterScanned" checked>
+                显示已扫描
+            </label>
+            <span class="filter-tag" id="filterInfo">显示全部</span>
+        </div>
+
+        <!-- 清单 -->
+        <div class="list-container" id="listContainer">
+            <div class="list-header">
+                <span>#</span>
+                <span>条码 / 分组</span>
+                <span>类型</span>
+                <span class="col-status">状态</span>
+            </div>
+            <div class="list-body" id="listBody">
+                <div class="empty-state">
+                    <span class="icon">📤</span>
+                    <h4>请上传出库表</h4>
+                    <p>上传后系统将自动生成复核清单</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px;font-size:13px;color:var(--gray-400);text-align:center;border-top:1px solid var(--gray-100);padding-top:18px;">
+            数据仅在本地浏览器处理，不会上传到服务器 · 快捷键: F3 聚焦扫描 | Ctrl+Shift+R 重置所有 | Ctrl+Shift+C 复制
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        //  主逻辑 - 两阶段 (主码扫描 → 子码扫描)
+        // ============================================================
+
+        (function() {
+            'use strict';
+
+            // ---- DOM 引用 ----
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            const fileName = document.getElementById('fileName');
+            const toolbar = document.getElementById('toolbar');
+            const scanBar = document.getElementById('scanBar');
+            const filterBar = document.getElementById('filterBar');
+            const listBody = document.getElementById('listBody');
+            const totalGroups = document.getElementById('totalGroups');
+            const totalItems = document.getElementById('totalItems');
+            const scannedCount = document.getElementById('scannedCount');
+            const scanInput = document.getElementById('scanInput');
+            const scanStatus = document.getElementById('scanStatus');
+            const scanProgress = document.getElementById('scanProgress');
+            const filterCanceled = document.getElementById('filterCanceled');
+            const filterScanned = document.getElementById('filterScanned');
+            const filterInfo = document.getElementById('filterInfo');
+            const btnExportTxt = document.getElementById('btnExportTxt');
+            const btnExportExcel = document.getElementById('btnExportExcel');
+            const btnCopy = document.getElementById('btnCopy');
+            const btnResetScan = document.getElementById('btnResetScan');
+            const modeIndicator = document.getElementById('modeIndicator');
+            const modeTag = document.getElementById('modeTag');
+            const selectedKeysDisplay = document.getElementById('selectedKeysDisplay');
+            const totalBoxCount = document.getElementById('totalBoxCount');
+            const subProgressItem = document.getElementById('subProgressItem');
+            const subProgress = document.getElementById('subProgress');
+            const btnEndMain = document.getElementById('btnEndMain');
+            const btnResetBatch = document.getElementById('btnResetBatch');
+            const toastEl = document.getElementById('toast');
+
+            // ---- 状态 ----
+            let rawData = [];
+            let groups = [];
+            let scannedSet = new Set(); // 所有已扫描的子码（用于全局统计）
+
+            // 两阶段状态
+            let mode = 'main'; // 'main' | 'sub'
+            let selectedMainKeys = new Set(); // 已选主码
+            let selectedGroups = []; // 已选主码对应的分组对象
+            let subScannedCount = 0; // 当前批次已扫子码数
+            let totalSubTarget = 0; // 当前批次需扫子码总数
+            let activeGroupKeys = new Set(); // 用于快速判断
+
+            // ---- Toast ----
+            function showToast(msg, type = 'info', duration = 2500) {
+                if (toastEl._timer) clearTimeout(toastEl._timer);
+                toastEl.textContent = msg;
+                toastEl.className = 'toast';
+                if (type === 'success') toastEl.classList.add('success');
+                else if (type === 'error') toastEl.classList.add('error');
+                else if (type === 'warning') toastEl.classList.add('warning');
+                toastEl.classList.add('show');
+                toastEl._timer = setTimeout(() => {
+                    toastEl.classList.remove('show');
+                }, duration);
+            }
+
+            // ---- 提取AS前缀 ----
+            function extractPrefix(val) {
+                if (!val) return val;
+                const s = String(val).trim();
+                if (s.includes('/')) {
+                    return s.split('/')[0].trim();
+                }
+                const match = s.match(/^(.*?[A-Za-z])U\d+$/);
+                if (match) {
+                    return match[1] + 'U';
+                }
+                const match2 = s.match(/^(.*?[A-Za-z])\d+$/);
+                if (match2 && match2[1].length >= 2) {
+                    return match2[1];
+                }
+                return s;
+            }
+
+            // ---- 解析Excel ----
+            function parseExcel(workbook) {
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                let kCol = null,
+                    asCol = null,
+                    statusCol = null;
+                const headers = Object.keys(data[0] || {});
+                for (const h of headers) {
+                    const clean = h.trim();
+                    if (clean.includes('FBA货件ID') || clean.includes('FBAShipmentID') || clean.includes('货件ID')) kCol = h;
+                    if (clean.includes('Custom box barcode') || clean.includes('自定义箱条码') || clean.includes('箱条码')) asCol =
+                        h;
+                    if (clean.includes('Status') || clean.includes('状态')) statusCol = h;
+                }
+                if (!kCol) {
+                    const keys = Object.keys(data[0] || {});
+                    if (keys.length >= 11) kCol = keys[10];
+                }
+                if (!asCol) {
+                    const keys = Object.keys(data[0] || {});
+                    if (keys.length >= 45) asCol = keys[44];
+                }
+                if (!statusCol) {
+                    const keys = Object.keys(data[0] || {});
+                    for (const k of keys) {
+                        if (k.toLowerCase().includes('status')) { statusCol = k; break; }
+                    }
+                }
+                if (!kCol && !asCol) {
+                    showToast('未找到 K列 或 AS列', 'error');
+                    return false;
+                }
+
+                rawData = [];
+                for (let i = 0; i < data.length; i++) {
+                    const row = data[i];
+                    let kVal = kCol ? String(row[kCol] || '').trim() : '';
+                    let asVal = asCol ? String(row[asCol] || '').trim() : '';
+                    let statusVal = statusCol ? String(row[statusCol] || '').trim() : '';
+
+                    let code = kVal || asVal;
+                    if (!code) continue;
+
+                    let type = 'fba';
+                    let displayCode = code;
+                    let prefix = null;
+                    if (kVal) {
+                        type = 'fba';
+                        prefix = kVal;
+                    } else if (asVal) {
+                        type = 'custom';
+                        prefix = extractPrefix(asVal);
+                        displayCode = asVal;
+                    } else {
+                        continue;
+                    }
+
+                    rawData.push({
+                        k: kVal,
+                        as: asVal,
+                        code: displayCode,
+                        prefix: prefix || displayCode,
+                        type: type,
+                        status: statusVal,
+                        rowIndex: i,
+                        raw: row
+                    });
+                }
+
+                if (rawData.length === 0) {
+                    showToast('未解析到有效数据', 'error');
+                    return false;
+                }
+
+                buildGroups();
+                renderList();
+                showToast(`✅ 解析成功！共 ${rawData.length} 行数据，${groups.length} 个分组`, 'success');
+                return true;
+            }
+
+            // ---- 构建分组 ----
+            function buildGroups() {
+                const map = new Map();
+                for (const item of rawData) {
+                    const key = item.prefix;
+                    const groupKey = key + '|' + item.type;
+                    if (!map.has(groupKey)) {
+                        map.set(groupKey, {
+                            key: key,
+                            type: item.type,
+                            items: [],
+                            statuses: new Set()
+                        });
+                    }
+                    const g = map.get(groupKey);
+                    g.items.push({
+                        code: item.code,
+                        scanned: false,
+                        raw: item,
+                        displayCode: item.code,
+                    });
+                    if (item.status) g.statuses.add(item.status);
+                }
+
+                groups = [];
+                for (const [_, g] of map) {
+                    g.items.sort((a, b) => {
+                        const ca = a.code;
+                        const cb = b.code;
+                        const na = parseInt(ca.replace(/^.*?(\d+)$/, '$1'));
+                        const nb = parseInt(cb.replace(/^.*?(\d+)$/, '$1'));
+                        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                        return ca.localeCompare(cb);
+                    });
+                    g.hasCanceled = g.statuses.has('已取消');
+                    groups.push(g);
+                }
+
+                groups.sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'fba' ? -1 : 1;
+                    return a.key.localeCompare(b.key);
+                });
+
+                // 重置扫描
+                scannedSet = new Set();
+                for (const g of groups) {
+                    for (const item of g.items) {
+                        item.scanned = false;
+                    }
+                }
+                // 重置两阶段状态
+                resetBatchState();
+            }
+
+            // ---- 重置批次状态 ----
+            function resetBatchState() {
+                selectedMainKeys.clear();
+                selectedGroups = [];
+                activeGroupKeys.clear();
+                subScannedCount = 0;
+                totalSubTarget = 0;
+                mode = 'main';
+                updateModeIndicator();
+                btnEndMain.disabled = true;
+                renderList();
+            }
+
+            // ---- 更新模式指示器 ----
+            function updateModeIndicator() {
+                if (groups.length === 0) {
+                    modeIndicator.style.display = 'none';
+                    return;
+                }
+                modeIndicator.style.display = 'flex';
+
+                if (mode === 'main') {
+                    modeTag.textContent = '🔵 主码扫描模式';
+                    modeTag.className = 'mode-tag main';
+                    subProgressItem.style.display = 'none';
+                    btnEndMain.disabled = (selectedMainKeys.size === 0);
+                } else {
+                    modeTag.textContent = '🟢 子码扫描模式';
+                    modeTag.className = 'mode-tag sub';
+                    subProgressItem.style.display = 'flex';
+                    subProgress.textContent = `${subScannedCount} / ${totalSubTarget}`;
+                    btnEndMain.disabled = true;
+                }
+
+                const keys = Array.from(selectedMainKeys);
+                selectedKeysDisplay.textContent = keys.length ? keys.join(', ') : '(无)';
+                totalBoxCount.textContent = totalSubTarget;
+
+                // 启用/禁用扫描输入
+                scanInput.disabled = false;
+                scanInput.focus();
+            }
+
+            // ---- 处理主码扫描 ----
+            function handleMainScan(code) {
+                // 查找分组
+                const group = groups.find(g => g.key === code);
+                if (!group) {
+                    scanStatus.textContent = `❌ 未找到主码: ${code}`;
+                    scanStatus.className = 'scan-status no-match';
+                    showToast(`❌ 未找到主码: ${code}`, 'error', 1500);
+                    scanInput.value = '';
+                    scanInput.focus();
+                    return;
+                }
+
+                // 检查是否已选
+                if (selectedMainKeys.has(code)) {
+                    scanStatus.textContent = `⏳ 主码 ${code} 已添加`;
+                    scanStatus.className = 'scan-status';
+                    showToast(`⏳ 主码 ${code} 已添加`, 'warning', 1200);
+                    scanInput.value = '';
+                    scanInput.focus();
+                    return;
+                }
+
+                // 添加主码
+                selectedMainKeys.add(code);
+                selectedGroups.push(group);
+                activeGroupKeys.add(code);
+                // 累加箱数
+                totalSubTarget += group.items.length;
+                // 更新UI
+                updateModeIndicator();
+                renderList();
+                scanStatus.textContent = `✅ 已添加主码: ${code} (${group.items.length} 箱)`;
+                scanStatus.className = 'scan-status match';
+                showToast(`✅ 已添加主码: ${code} (${group.items.length} 箱)`, 'success', 1500);
+                scanInput.value = '';
+                scanInput.focus();
+                btnEndMain.disabled = false;
+            }
+
+            // ---- 处理子码扫描 ----
+            function handleSubScan(code) {
+                // 尝试匹配：先精确匹配 item.code，再匹配 "前缀/序号" 格式
+                let matchedItem = null;
+                let matchedGroup = null;
+
+                // 1. 精确匹配 item.code
+                for (const g of selectedGroups) {
+                    for (const item of g.items) {
+                        if (item.code === code) {
+                            matchedItem = item;
+                            matchedGroup = g;
+                            break;
+                        }
+                        // 2. 对于 fba 类型，匹配 "前缀/序号" 格式
+                        if (g.type === 'fba') {
+                            const idxInGroup = g.items.indexOf(item) + 1;
+                            const displayCode = `${g.key}/${idxInGroup}`;
+                            if (displayCode === code) {
+                                matchedItem = item;
+                                matchedGroup = g;
+                                break;
+                            }
+                        }
+                    }
+                    if (matchedItem) break;
+                }
+
+                if (!matchedItem) {
+                    scanStatus.textContent = `❌ 无效子码: ${code} (不在当前主码列表中)`;
+                    scanStatus.className = 'scan-status no-match';
+                    showToast(`❌ 无效子码: ${code}`, 'error', 1500);
+                    scanInput.value = '';
+                    scanInput.focus();
+                    return;
+                }
+
+                // 检查是否已扫描
+                if (matchedItem.scanned) {
+                    scanStatus.textContent = `⏳ 子码 ${code} 已扫描过`;
+                    scanStatus.className = 'scan-status';
+                    showToast(`⏳ 子码 ${code} 已扫描过`, 'warning', 1200);
+                    scanInput.value = '';
+                    scanInput.focus();
+                    return;
+                }
+
+                // 标记为已扫描
+                matchedItem.scanned = true;
+                scannedSet.add(matchedItem.code);
+                subScannedCount++;
+                // 更新进度
+                subProgress.textContent = `${subScannedCount} / ${totalSubTarget}`;
+                scanStatus.textContent = `✅ 已扫描: ${code} (${subScannedCount}/${totalSubTarget})`;
+                scanStatus.className = 'scan-status match';
+                showToast(`✅ 已扫描: ${code}`, 'success', 1000);
+                scanInput.value = '';
+                scanInput.focus();
+
+                // 更新全局扫描计数
+                updateStats();
+                renderList();
+
+                // 检查是否全部完成
+                if (subScannedCount === totalSubTarget) {
+                    showToast(`🎉 所有子码扫描完成！ (${totalSubTarget} 箱)`, 'success', 3000);
+                    scanStatus.textContent = `🎉 完成！所有子码已扫描`;
+                    // 自动重置到主码模式
+                    setTimeout(() => {
+                        resetBatchState();
+                        showToast('🔄 已自动重置，可开始下一轮主码扫描', 'info', 2000);
+                        renderList();
+                    }, 1500);
+                }
+            }
+
+            // ---- 扫描入口 ----
+            function handleScan(input) {
+                if (!input || input.trim() === '') {
+                    scanStatus.textContent = '请输入条码';
+                    scanStatus.className = 'scan-status';
+                    return;
+                }
+                const code = input.trim();
+
+                if (mode === 'main') {
+                    handleMainScan(code);
+                } else {
+                    handleSubScan(code);
+                }
+            }
+
+            // ---- 结束主码扫描 ----
+            function endMainScan() {
+                if (selectedMainKeys.size === 0) {
+                    showToast('请先扫描至少一个主码', 'warning');
+                    return;
+                }
+                if (mode === 'sub') {
+                    showToast('已在子码模式', 'warning');
+                    return;
+                }
+                mode = 'sub';
+                subScannedCount = 0;
+                // 重置子项扫描状态（但保留扫描记录？我们要求子码扫描从零开始，但已扫描的标记要清空？）
+                // 为了重新扫描子码，我们需要清除之前可能已扫描的状态，但也要保留全局扫描记录？这里我们选择重置子项扫描状态，但保留全局scannedSet？不，我们要求子码扫描过程中重新标记，所以清空子项的scanned标记，但保留全局scannedSet？我们要求“子码扫描”时重新标记，之前主码扫描阶段不会标记子项，所以子项都是未扫描的。
+                // 但如果有之前残留的扫描标记，需要清除。
+                for (const g of selectedGroups) {
+                    for (const item of g.items) {
+                        item.scanned = false;
+                        scannedSet.delete(item.code);
+                    }
+                }
+                // 重置扫描计数
+                subScannedCount = 0;
+                updateModeIndicator();
+                // 重新计算总目标
+                totalSubTarget = selectedGroups.reduce((sum, g) => sum + g.items.length, 0);
+                subProgress.textContent = `0 / ${totalSubTarget}`;
+                renderList();
+                scanStatus.textContent = `🔁 已进入子码扫描模式，请扫描子码 (共 ${totalSubTarget} 箱)`;
+                scanStatus.className = 'scan-status match';
+                showToast(`🔁 子码扫描模式，共 ${totalSubTarget} 箱`, 'success', 2000);
+                btnEndMain.disabled = true;
+                scanInput.focus();
+            }
+
+            // ---- 更新统计 ----
+            function updateStats() {
+                let total = 0,
+                    scanned = 0;
+                for (const g of groups) {
+                    for (const item of g.items) {
+                        total++;
+                        if (item.scanned) scanned++;
+                    }
+                }
+                totalItems.textContent = total;
+                scannedCount.textContent = scanned;
+                scanProgress.textContent = `${scanned} / ${total}`;
+            }
+
+            // ---- 渲染清单 ----
+            function renderList() {
+                const showCanceled = filterCanceled.checked;
+                const showScanned = filterScanned.checked;
+
+                let filteredGroups = groups.filter(g => {
+                    if (!showCanceled && g.hasCanceled) return false;
+                    return true;
+                });
+
+                // 计算总条目
+                let total = 0,
+                    scanned = 0;
+                for (const g of filteredGroups) {
+                    for (const item of g.items) {
+                        total++;
+                        if (item.scanned) scanned++;
+                    }
+                }
+                totalGroups.textContent = filteredGroups.length;
+                totalItems.textContent = total;
+                scannedCount.textContent = scanned;
+                scanProgress.textContent = `${scanned} / ${total}`;
+
+                if (filteredGroups.length === 0) {
+                    listBody.innerHTML = `
+                        <div class="empty-state">
+                            <span class="icon">🔍</span>
+                            <h4>没有匹配的数据</h4>
+                            <p>尝试调整过滤条件</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                let globalIdx = 0;
+
+                for (const g of filteredGroups) {
+                    const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义箱条码';
+                    const typeClass = g.type === 'fba' ? 'fba' : 'custom';
+                    const count = g.items.length;
+                    const isActive = activeGroupKeys.has(g.key);
+                    const allScanned = g.items.every(item => item.scanned);
+                    const headerStatus = allScanned ? '✅' : '⬜';
+
+                    // 分组头
+                    globalIdx++;
+                    html += `
+                        <div class="list-item group-header-item ${isActive ? 'active-group' : ''}">
+                            <span class="idx">#${globalIdx}</span>
+                            <span class="code">
+                                <span class="arrow">📦</span>
+                                <span class="prefix-highlight">${escapeHtml(g.key)}</span>
+                                <span class="count-badge">${count} 箱</span>
+                                ${g.hasCanceled ? '<span style="color:#dc2626;font-size:12px;font-family:sans-serif;margin-left:8px;">⚠️ 含已取消</span>' : ''}
+                                ${isActive ? '<span style="color:var(--primary);font-size:12px;font-family:sans-serif;margin-left:8px;">✅ 已选</span>' : ''}
+                            </span>
+                            <span class="type-tag ${typeClass}">${typeLabel}</span>
+                            <span class="status-cell"><span class="group-header">${headerStatus}</span></span>
+                        </div>
+                    `;
+
+                    // 子项
+                    for (const item of g.items) {
+                        globalIdx++;
+                        const isScanned = item.scanned;
+                        const statusIcon = isScanned ? '✅' : '⬜';
+                        const scannedClass = isScanned ? 'scanned' : '';
+                        let displayCode = item.code;
+                        if (g.type === 'fba') {
+                            const idxInGroup = g.items.indexOf(item) + 1;
+                            displayCode = `${g.key}/${idxInGroup}`;
+                        }
+                        // 如果是激活分组，且模式为sub，且未扫描，且总目标>0，高亮
+                        const isActiveItem = isActive && mode === 'sub';
+                        html += `
+                            <div class="list-item ${scannedClass} ${isActiveItem ? 'active-group' : ''}" data-code="${escapeHtml(item.code)}" data-group="${escapeHtml(g.key)}" data-type="${g.type}">
+                                <span class="idx">${globalIdx}</span>
+                                <span class="code">${escapeHtml(displayCode)}</span>
+                                <span class="type-tag ${typeClass}" style="opacity:0.6;">子项</span>
+                                <span class="status-cell">
+                                    <span class="${isScanned ? 'scanned' : 'pending'}">${statusIcon}</span>
+                                </span>
+                            </div>
+                        `;
+                    }
+                }
+
+                listBody.innerHTML = html;
+
+                // 更新过滤信息
+                const totalGroupsAll = groups.length;
+                const filteredCount = filteredGroups.length;
+                if (filteredCount === totalGroupsAll) {
+                    filterInfo.textContent = '显示全部';
+                } else {
+                    filterInfo.textContent = `已过滤 ${totalGroupsAll - filteredCount} 个分组`;
+                }
+
+                // 显示界面
+                toolbar.style.display = 'flex';
+                scanBar.style.display = 'flex';
+                filterBar.style.display = 'flex';
+                updateModeIndicator();
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            // ---- 导出TXT ----
+            function exportTxt() {
+                const showCanceled = filterCanceled.checked;
+                let lines = [];
+                lines.push('═══════════════════════════════════════════');
+                lines.push('  出库复核清单 (两阶段)');
+                lines.push(`  生成时间: ${new Date().toLocaleString()}`);
+                lines.push('═══════════════════════════════════════════');
+                lines.push('');
+
+                let idx = 0;
+                for (const g of groups) {
+                    if (!showCanceled && g.hasCanceled) continue;
+                    const typeLabel = g.type === 'fba' ? 'FBA货件ID' : '自定义箱条码';
+                    idx++;
+                    lines.push(`【${typeLabel}: ${g.key}】 共 ${g.items.length} 箱`);
+                    for (let i = 0; i < g.items.length; i++) {
+                        const item = g.items[i];
+                        let displayCode = item.code;
+                        if (g.type === 'fba') {
+                            displayCode = `${g.key}/${i + 1}`;
+                        }
+                        const mark = item.scanned ? '✅' : '⬜';
+                        lines.push(`  ${String(i+1).padStart(3,' ')}. ${mark} ${displayCode}`);
+                    }
+                    lines.push('');
+                }
+
+                const text = lines.join('\n');
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `复核清单_${new Date().toISOString().slice(0,10)}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('📄 TXT 导出成功', 'success');
+            }
+
+            // ---- 导出Excel ----
+            function exportExcel() {
+                const showCanceled = filterCanceled.checked;
+                const rows = [
+                    ['#', '分组类型', '分组Key', '子项序号', '子项条码', '已扫描', '状态']
+                ];
+                let idx = 0;
+                for (const g of groups) {
+                    if (!showCanceled && g.hasCanceled) continue;
+                    const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义箱条码';
+                    idx++;
+                    rows.push([idx, typeLabel, g.key, '', `共 ${g.items.length} 箱`, '', '']);
+                    for (let i = 0; i < g.items.length; i++) {
+                        const item = g.items[i];
+                        let displayCode = item.code;
+                        if (g.type === 'fba') {
+                            displayCode = `${g.key}/${i + 1}`;
+                        }
+                        rows.push(['', '', '', i + 1, displayCode, item.scanned ? '是' : '否', '']);
+                    }
+                }
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, '复核清单');
+                const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([out], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `复核清单_${new Date().toISOString().slice(0,10)}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('📊 Excel 导出成功', 'success');
+            }
+
+            // ---- 复制 ----
+            function copyToClipboard() {
+                const showCanceled = filterCanceled.checked;
+                let lines = [];
+                lines.push('出库复核清单 (两阶段)');
+                lines.push(`生成: ${new Date().toLocaleString()}`);
+                lines.push('─'.repeat(50));
+
+                for (const g of groups) {
+                    if (!showCanceled && g.hasCanceled) continue;
+                    const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义箱条码';
+                    lines.push(`【${typeLabel}: ${g.key}】 ${g.items.length} 箱`);
+                    for (let i = 0; i < g.items.length; i++) {
+                        const item = g.items[i];
+                        let displayCode = item.code;
+                        if (g.type === 'fba') {
+                            displayCode = `${g.key}/${i + 1}`;
+                        }
+                        const mark = item.scanned ? '✅' : '⬜';
+                        lines.push(`  ${String(i+1).padStart(3,' ')}. ${mark} ${displayCode}`);
+                    }
+                    lines.push('');
+                }
+
+                const text = lines.join('\n');
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('📋 已复制到剪贴板', 'success');
+                }).catch(() => {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    ta.remove();
+                    showToast('📋 已复制到剪贴板', 'success');
+                });
+            }
+
+            // ---- 重置所有扫描 ----
+            function resetAllScan() {
+                for (const g of groups) {
+                    for (const item of g.items) {
+                        item.scanned = false;
+                    }
+                }
+                scannedSet.clear();
+                resetBatchState();
+                renderList();
+                showToast('🔄 已重置所有扫描状态', 'info');
+                scanInput.focus();
+            }
+
+            // ---- 文件处理 ----
+            function handleFile(file) {
+                if (!file) return;
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (!['xlsx', 'xls'].includes(ext)) {
+                    showToast('⚠️ 请上传 .xlsx 或 .xls 文件', 'error');
+                    return;
+                }
+                fileName.textContent = `📎 ${file.name}`;
+                fileName.style.display = 'inline-block';
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const success = parseExcel(workbook);
+                        if (!success) {
+                            fileName.style.display = 'none';
+                        }
+                    } catch (err) {
+                        showToast('❌ 解析失败: ' + err.message, 'error');
+                        fileName.style.display = 'none';
+                    }
+                };
+                reader.onerror = function() {
+                    showToast('❌ 读取文件失败', 'error');
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            // ---- 事件绑定 ----
+            fileInput.addEventListener('change', function(e) {
+                if (this.files.length) {
+                    handleFile(this.files[0]);
+                }
+                this.value = '';
+            });
+
+            uploadZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('dragover');
+            });
+            uploadZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+            });
+            uploadZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            scanInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleScan(this.value);
+                }
+            });
+
+            filterCanceled.addEventListener('change', renderList);
+            filterScanned.addEventListener('change', renderList);
+
+            btnEndMain.addEventListener('click', endMainScan);
+            btnResetBatch.addEventListener('click', function() {
+                resetBatchState();
+                renderList();
+                showToast('🔄 已重置当前批次', 'info');
+                scanInput.focus();
+            });
+
+            btnExportTxt.addEventListener('click', exportTxt);
+            btnExportExcel.addEventListener('click', exportExcel);
+            btnCopy.addEventListener('click', copyToClipboard);
+            btnResetScan.addEventListener('click', resetAllScan);
+
+            // ---- 快捷键 ----
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+                    e.preventDefault();
+                    resetAllScan();
+                }
+                if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    copyToClipboard();
+                }
+                if (e.key === 'F3') {
+                    e.preventDefault();
+                    scanInput.focus();
+                    scanInput.select();
+                }
+            });
+
+            // ---- 初始化 ----
+            console.log('📦 出库核对系统 (两阶段) 已加载');
+            console.log('💡 快捷键: F3 聚焦扫描 | Ctrl+Shift+R 重置所有 | Ctrl+Shift+C 复制');
+
+        })();
+    </script>
+</body>
+</html>

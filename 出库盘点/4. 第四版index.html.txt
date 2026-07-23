@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>出库核对 - PDA</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
+    <style>
+        /* ===== 样式与之前相同 ===== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 12px; color: #1e293b; font-size: 16px; }
+        .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h1 { font-size: 22px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        h1 small { font-size: 14px; font-weight: normal; color: #64748b; }
+        .status-bar { background: #f1f5f9; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; flex-wrap: wrap; justify-content: space-between; font-size: 14px; gap: 6px; }
+        .status-bar .label { color: #64748b; }
+        .status-bar .value { font-weight: 600; }
+        .global-stats-wrapper { margin-bottom: 12px; border-radius: 10px; border: 1px solid #bae6fd; overflow: hidden; }
+        .global-stats-header { background: #e0f2fe; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; font-weight: 600; color: #0369a1; }
+        .global-stats-header .toggle-icon { font-size: 18px; transition: transform 0.2s; }
+        .global-stats-header .toggle-icon.collapsed { transform: rotate(-90deg); }
+        .global-stats-content { background: #f0f9ff; padding: 10px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; font-size: 14px; gap: 6px; transition: max-height 0.3s ease; max-height: 200px; overflow: hidden; }
+        .global-stats-content.collapsed { max-height: 0; padding: 0 14px; border-top: 0; }
+        .global-stats-content .label { color: #0369a1; }
+        .global-stats-content .value { font-weight: 700; color: #0c4a6e; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 20px; border-radius: 30px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; background: #e2e8f0; color: #1e293b; min-height: 48px; min-width: 48px; touch-action: manipulation; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; }
+        .btn:disabled { opacity: 0.5; pointer-events: none; }
+        .scan-input-group { display: flex; gap: 10px; margin: 12px 0; align-items: center; }
+        .scan-input-group input { flex: 1; padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 30px; font-size: 18px; background: #f8fafc; outline: none; min-height: 54px; }
+        .scan-input-group input:focus { border-color: #2563eb; background: white; }
+        .scan-input-group .btn { min-width: 60px; }
+        .list-container { margin-top: 12px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+        .list-item { display: grid; grid-template-columns: 30px 1fr 60px 50px; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; align-items: center; font-size: 14px; font-family: monospace; }
+        .list-item.group-header { background: #f1f5f9; font-weight: 700; font-family: sans-serif; }
+        .list-item .status { text-align: center; font-size: 18px; }
+        .list-item .badge { font-size: 11px; padding: 2px 8px; border-radius: 30px; background: #e2e8f0; color: #475569; font-family: sans-serif; }
+        .list-item .badge.fba { background: #dbeafe; color: #2563eb; }
+        .list-item .badge.custom { background: #fef3c7; color: #b45309; }
+        .list-item.scanned { background: #dcfce7; }
+        .list-item.active { background: #dbeafe; }
+        /* 隐藏控制通过 display 实现，不新增类 */
+        .list-item.hidden-by-view { display: none; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal { background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal h2 { margin-bottom: 16px; font-size: 20px; text-align: center; }
+        .modal label { display: block; margin: 12px 0 4px; font-weight: 500; }
+        .modal input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; }
+        .modal .btn { width: 100%; margin-top: 16px; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 16px 28px; border-radius: 30px; font-weight: 600; font-size: 17px; z-index: 2000; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; pointer-events: none; max-width: 90%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.3); transform: translateX(-50%) translateY(-20px); }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background: #16a34a; }
+        .toast.error { background: #dc2626; }
+        .toast.warning { background: #f59e0b; }
+        .upload-zone { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 12px; cursor: pointer; background: #f8fafc; }
+        .upload-zone input[type="file"] { display: none; }
+        .file-info { font-size: 14px; color: #64748b; margin-top: 8px; }
+        @media (max-width: 768px) { .desktop-only { display: none; } }
+        .flex-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .flex-row .btn { flex: 1; min-width: 80px; }
+        .toggle-view-btn { background: #e2e8f0; border: 1px solid #cbd5e1; padding: 6px 16px; border-radius: 30px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.2s; color: #1e293b; margin-bottom: 8px; display: inline-flex; align-items: center; gap: 6px; }
+        .toggle-view-btn.active { background: #dbeafe; border-color: #2563eb; color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <h1>
+            📦 出库核对
+            <small id="connectionStatus">● 未连接</small>
+        </h1>
+
+        <!-- 个人状态栏 -->
+        <div class="status-bar">
+            <span><span class="label">本机模式:</span> <span id="modeDisplay">主码</span></span>
+            <span><span class="label">我的主码:</span> <span id="myKeysDisplay">无</span></span>
+            <span><span class="label">我的箱数:</span> <span id="myTotalBox">0</span></span>
+            <span><span class="label">已扫:</span> <span id="mySubProgress">0/0</span></span>
+        </div>
+
+        <!-- 全局统计 - 可折叠 -->
+        <div class="global-stats-wrapper">
+            <div class="global-stats-header" id="globalStatsToggle">
+                <span>📊 全局统计</span>
+                <span class="toggle-icon" id="globalStatsIcon">▼</span>
+            </div>
+            <div class="global-stats-content" id="globalStatsContent">
+                <span><span class="label">📦 总主码:</span> <span class="value" id="globalMainCount">0</span></span>
+                <span><span class="label">📦 总箱数:</span> <span class="value" id="globalTotalBox">0</span></span>
+                <span><span class="label">✅ 已扫:</span> <span class="value" id="globalScanned">0</span></span>
+                <span><span class="label">⬜ 未扫:</span> <span class="value" id="globalUnscanned">0</span></span>
+            </div>
+        </div>
+
+        <!-- 视图切换按钮：显示已完成/未完成 -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+            <button class="toggle-view-btn" id="toggleViewBtn">📂 显示未完成扫描列表</button>
+        </div>
+
+        <div class="upload-zone desktop-only" id="uploadZone">
+            <span style="font-size:32px;">📂</span>
+            <p>点击上传出库表 (.xlsx/.xls)</p>
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
+            <div class="file-info" id="fileInfo">未上传</div>
+        </div>
+        <div style="background:#f1f5f9;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:14px;">
+            <span>👤 <span id="operatorDisplay">未设置</span></span>
+            <span style="margin-left:16px;">🚗 <span id="vehicleDisplay">未设置</span></span>
+        </div>
+        <div class="scan-input-group">
+            <input type="text" id="scanInput" placeholder="扫描条码..." autofocus>
+            <button class="btn btn-primary" id="scanBtn">↵</button>
+        </div>
+        <div class="flex-row">
+            <button class="btn btn-warning" id="endMainBtn">✅ 结束主码</button>
+            <button class="btn btn-outline" id="resetBatchBtn">🔄 重置我的主码</button>
+            <button class="btn btn-outline" id="resetAllBtn">🔁 全部重置</button>
+        </div>
+        <div class="list-container" id="listContainer">
+            <div id="listBody" style="max-height:50vh;overflow-y:auto;">
+                <div style="padding:30px;text-align:center;color:#94a3b8;">请上传文件或等待数据同步</div>
+            </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+            <button class="btn btn-success" id="exportTxtBtn" style="flex:1;">📄 导出TXT</button>
+            <button class="btn btn-primary" id="exportExcelBtn" style="flex:1;">📊 导出Excel</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="operatorModal">
+        <div class="modal">
+            <h2>🔐 身份验证</h2>
+            <label>扫描员姓名</label>
+            <input type="text" id="operatorInput" placeholder="请输入姓名">
+            <label>车牌号</label>
+            <input type="text" id="vehicleInput" placeholder="请输入车牌号">
+            <button class="btn btn-primary" id="confirmOperatorBtn">确认并开始</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ---- DOM ----
+            const scanInput = document.getElementById('scanInput');
+            const scanBtn = document.getElementById('scanBtn');
+            const listBody = document.getElementById('listBody');
+            const modeDisplay = document.getElementById('modeDisplay');
+            const myKeysDisplay = document.getElementById('myKeysDisplay');
+            const myTotalBox = document.getElementById('myTotalBox');
+            const mySubProgress = document.getElementById('mySubProgress');
+            const globalMainCount = document.getElementById('globalMainCount');
+            const globalTotalBox = document.getElementById('globalTotalBox');
+            const globalScanned = document.getElementById('globalScanned');
+            const globalUnscanned = document.getElementById('globalUnscanned');
+            const operatorDisplay = document.getElementById('operatorDisplay');
+            const vehicleDisplay = document.getElementById('vehicleDisplay');
+            const endMainBtn = document.getElementById('endMainBtn');
+            const resetBatchBtn = document.getElementById('resetBatchBtn');
+            const resetAllBtn = document.getElementById('resetAllBtn');
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const exportTxtBtn = document.getElementById('exportTxtBtn');
+            const exportExcelBtn = document.getElementById('exportExcelBtn');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const operatorModal = document.getElementById('operatorModal');
+            const operatorInput = document.getElementById('operatorInput');
+            const vehicleInput = document.getElementById('vehicleInput');
+            const confirmOperatorBtn = document.getElementById('confirmOperatorBtn');
+            const toastEl = document.getElementById('toast');
+            const globalStatsToggle = document.getElementById('globalStatsToggle');
+            const globalStatsContent = document.getElementById('globalStatsContent');
+            const globalStatsIcon = document.getElementById('globalStatsIcon');
+            const toggleViewBtn = document.getElementById('toggleViewBtn');
+
+            // ---- 状态 ----
+            let ws = null;
+            let operator = '';
+            let vehicle = '';
+            let localMode = 'main';
+            let localAddedKeys = [];
+            let state = {
+                groups: [],
+                selectedMainKeys: [],
+                scanStatus: {}
+            };
+            let reconnectTimer = null;
+            let toastTimer = null;
+            const WS_URL = `ws://${window.location.hostname}:3000`;
+
+            // ---- UI 状态 ----
+            let globalStatsCollapsed = false;
+            // viewMode: 'done' 表示显示已完成，'undone' 表示显示未完成
+            let viewMode = 'undone'; // 默认显示未完成
+
+            // ---- 持久化 ----
+            function saveLocalState() {
+                try {
+                    localStorage.setItem('pda_localMode', localMode);
+                    localStorage.setItem('pda_localAddedKeys', JSON.stringify(localAddedKeys));
+                    localStorage.setItem('pda_viewMode', viewMode);
+                    localStorage.setItem('pda_statsCollapsed', JSON.stringify(globalStatsCollapsed));
+                } catch (e) { console.warn('保存本地状态失败:', e); }
+            }
+
+            function loadLocalState() {
+                try {
+                    const mode = localStorage.getItem('pda_localMode');
+                    const keys = localStorage.getItem('pda_localAddedKeys');
+                    const view = localStorage.getItem('pda_viewMode');
+                    const collapsed = localStorage.getItem('pda_statsCollapsed');
+                    if (mode) localMode = mode;
+                    if (keys) { const p = JSON.parse(keys); if (Array.isArray(p)) localAddedKeys = p; }
+                    if (view) viewMode = view;
+                    if (collapsed) globalStatsCollapsed = JSON.parse(collapsed);
+                } catch (e) { console.warn('加载本地状态失败:', e); }
+            }
+
+            // ---- Toast ----
+            function showToast(msg, type = 'info', duration = 3000) {
+                if (toastTimer) clearTimeout(toastTimer);
+                toastEl.textContent = msg;
+                toastEl.className = 'toast';
+                if (type === 'success') toastEl.classList.add('success');
+                else if (type === 'error') toastEl.classList.add('error');
+                else if (type === 'warning') toastEl.classList.add('warning');
+                toastEl.classList.add('show');
+                toastTimer = setTimeout(() => {
+                    toastEl.classList.remove('show');
+                }, duration);
+                console.log(`[Toast] ${type}: ${msg}`);
+            }
+
+            // ---- 统计 ----
+            function getGlobalStats() {
+                const totalMain = state.selectedMainKeys.length;
+                let totalBoxes = 0,
+                    scannedBoxes = 0;
+                for (const key of state.selectedMainKeys) {
+                    const g = state.groups.find(gr => gr.key === key);
+                    if (g) {
+                        totalBoxes += g.items.length;
+                        for (const item of g.items) {
+                            if (state.scanStatus[item.code]) scannedBoxes++;
+                        }
+                    }
+                }
+                return { totalMain, totalBoxes, scannedBoxes, unscannedBoxes: totalBoxes - scannedBoxes };
+            }
+
+            function getMyStats() {
+                let total = 0,
+                    scanned = 0;
+                for (const key of localAddedKeys) {
+                    const g = state.groups.find(gr => gr.key === key);
+                    if (g) {
+                        total += g.items.length;
+                        for (const item of g.items) {
+                            if (state.scanStatus[item.code]) scanned++;
+                        }
+                    }
+                }
+                return { total, scanned };
+            }
+
+            // ---- 更新状态栏 ----
+            function updateStatusBar() {
+                // 个人
+                modeDisplay.textContent = localMode === 'main' ? '主码' : '子码';
+                myKeysDisplay.textContent = localAddedKeys.length ? localAddedKeys.join(', ') : '无';
+                const myStats = getMyStats();
+                myTotalBox.textContent = myStats.total;
+                mySubProgress.textContent = `${myStats.scanned}/${myStats.total}`;
+                endMainBtn.disabled = (localMode === 'sub' || localAddedKeys.length === 0);
+
+                // 全局
+                const global = getGlobalStats();
+                globalMainCount.textContent = global.totalMain;
+                globalTotalBox.textContent = global.totalBoxes;
+                globalScanned.textContent = global.scannedBoxes;
+                globalUnscanned.textContent = global.unscannedBoxes;
+
+                // 折叠状态
+                if (globalStatsCollapsed) {
+                    globalStatsContent.classList.add('collapsed');
+                    globalStatsIcon.classList.add('collapsed');
+                    globalStatsIcon.textContent = '▶';
+                } else {
+                    globalStatsContent.classList.remove('collapsed');
+                    globalStatsIcon.classList.remove('collapsed');
+                    globalStatsIcon.textContent = '▼';
+                }
+
+                // 保存状态
+                saveLocalState();
+
+                // 子码自动完成
+                if (localMode === 'sub' && myStats.total > 0 && myStats.scanned === myStats.total) {
+                    showToast('🎉 您的所有子码扫描完成！自动切回主码模式', 'success', 3000);
+                    localMode = 'main';
+                    updateStatusBar();
+                    renderList();
+                }
+            }
+
+            // ---- WebSocket ----
+            function connectWebSocket() {
+                if (ws && ws.readyState === WebSocket.OPEN) return;
+                try {
+                    ws = new WebSocket(WS_URL);
+                    ws.onopen = function() {
+                        connectionStatus.textContent = '● 已连接';
+                        connectionStatus.style.color = '#16a34a';
+                        showToast('✅ 已连接到服务器', 'success', 2000);
+                        console.log('✅ WebSocket 连接成功');
+                    };
+                    ws.onmessage = function(event) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.log('📨 收到服务器消息:', data);
+                            if (data.type === 'state') {
+                                state = data.state;
+                                localAddedKeys = localAddedKeys.filter(k => state.selectedMainKeys.includes(k));
+                                if (localMode === 'sub' && localAddedKeys.length === 0) {
+                                    localMode = 'main';
+                                    showToast('🔄 您的任务已失效，已切回主码模式', 'warning', 2000);
+                                }
+                                renderList();
+                                updateStatusBar();
+                            } else if (data.type === 'success') {
+                                const msg = data.message;
+                                if (msg.includes('已添加主码:')) {
+                                    const match = msg.match(/已添加主码:\s*([^\s]+)/);
+                                    if (match) {
+                                        const key = match[1];
+                                        if (!localAddedKeys.includes(key)) {
+                                            localAddedKeys.push(key);
+                                            renderList();
+                                            updateStatusBar();
+                                        }
+                                    }
+                                }
+                                showToast(data.message, 'success', 2000);
+                                scanInput.value = '';
+                                scanInput.focus();
+                            } else if (data.type === 'error') {
+                                showToast(data.message, 'error', 3000);
+                                scanInput.value = '';
+                                scanInput.focus();
+                            }
+                        } catch (err) {
+                            console.error('❌ 解析消息失败:', err);
+                        }
+                    };
+                    ws.onclose = function() {
+                        connectionStatus.textContent = '● 未连接';
+                        connectionStatus.style.color = '#dc2626';
+                        showToast('⚠️ 连接断开，尝试重连...', 'error');
+                        if (reconnectTimer) clearTimeout(reconnectTimer);
+                        reconnectTimer = setTimeout(connectWebSocket, 3000);
+                    };
+                    ws.onerror = function(err) {
+                        console.error('❌ WebSocket错误:', err);
+                        ws.close();
+                    };
+                } catch (err) {
+                    console.error('❌ 连接失败:', err);
+                    setTimeout(connectWebSocket, 3000);
+                }
+            }
+
+            // ---- 发送扫描 ----
+            function sendScan(code) {
+                if (!code || code.trim() === '') {
+                    showToast('请输入条码', 'warning');
+                    return;
+                }
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    showToast('❌ 服务器未连接', 'error');
+                    return;
+                }
+                const trimmed = code.trim();
+                if (localMode === 'main') {
+                    ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'main' }));
+                } else {
+                    let belongs = false;
+                    for (const key of localAddedKeys) {
+                        const g = state.groups.find(gr => gr.key === key);
+                        if (g) {
+                            if (g.items.find(i => i.code === trimmed)) { belongs = true; break; }
+                            const parts = trimmed.split('/');
+                            if (parts.length === 2 && parts[0] === key) {
+                                const idx = parseInt(parts[1]);
+                                if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) { belongs = true; break; }
+                            }
+                        }
+                    }
+                    if (!belongs) {
+                        showToast(`❌ 子码 ${trimmed} 不属于您添加的主码`, 'error', 3000);
+                        scanInput.value = '';
+                        scanInput.focus();
+                        return;
+                    }
+                    ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'sub' }));
+                }
+            }
+
+            // ---- 切换子码 ----
+            function switchToSubMode() {
+                if (localAddedKeys.length === 0) {
+                    showToast('您还没有添加任何主码', 'warning');
+                    return;
+                }
+                if (localMode === 'sub') {
+                    showToast('已经是子码模式', 'warning');
+                    return;
+                }
+                localMode = 'sub';
+                updateStatusBar();
+                renderList();
+                showToast('🔁 已切换至子码模式', 'success', 2000);
+                scanInput.focus();
+            }
+
+            // ---- 重置我的主码 ----
+            function resetMyKeys() {
+                if (localAddedKeys.length === 0) {
+                    showToast('您没有主码需要重置', 'warning');
+                    return;
+                }
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    showToast('❌ 服务器未连接', 'error');
+                    return;
+                }
+                const keysToRelease = [...localAddedKeys];
+                ws.send(JSON.stringify({ type: 'release_keys', keys: keysToRelease }));
+                localAddedKeys = [];
+                localMode = 'main';
+                updateStatusBar();
+                renderList();
+                showToast(`🔄 已释放主码: ${keysToRelease.join(', ')}`, 'info', 3000);
+                scanInput.focus();
+            }
+
+            // ---- 全部重置 ----
+            function resetAll() {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    showToast('❌ 服务器未连接', 'error');
+                    return;
+                }
+                if (confirm('确定重置所有扫描记录吗？')) {
+                    ws.send(JSON.stringify({ type: 'reset_all' }));
+                    localAddedKeys = [];
+                    localMode = 'main';
+                    updateStatusBar();
+                }
+            }
+
+            // ---- 渲染清单（根据 viewMode 过滤） ----
+            function renderList() {
+                const groups = state.groups;
+                if (groups.length === 0) {
+                    listBody.innerHTML = `<div style="padding:30px;text-align:center;color:#94a3b8;">暂无数据，请上传文件</div>`;
+                    return;
+                }
+
+                let html = '';
+                let globalIdx = 0;
+                const mySet = new Set(localAddedKeys);
+
+                let displayedCount = 0;
+                for (const g of groups) {
+                    const isMy = mySet.has(g.key);
+                    const allScanned = g.items.every(item => state.scanStatus[item.code] || false);
+                    const typeLabel = g.type === 'fba' ? 'FBA' : '自定义';
+                    const typeClass = g.type === 'fba' ? 'fba' : 'custom';
+
+                    // 根据 viewMode 过滤
+                    if (viewMode === 'done' && !allScanned) continue;
+                    if (viewMode === 'undone' && allScanned) continue;
+
+                    // 分组头部
+                    globalIdx++;
+                    html += `
+                        <div class="list-item group-header ${isMy ? 'active' : ''}">
+                            <span>${globalIdx}</span>
+                            <span class="code">${g.key} <span class="badge">${g.items.length}箱</span> ${isMy ? '⭐ (我的)' : ''} ${allScanned ? '✅ 完成' : ''}</span>
+                            <span class="badge ${typeClass}">${typeLabel}</span>
+                            <span class="status">${allScanned ? '✅' : '⬜'}</span>
+                        </div>
+                    `;
+
+                    // 子项
+                    for (let i = 0; i < g.items.length; i++) {
+                        const item = g.items[i];
+                        globalIdx++;
+                        const scanned = state.scanStatus[item.code] || false;
+                        let displayCode = item.code;
+                        if (g.type === 'fba') {
+                            displayCode = `${g.key}/${i+1}`;
+                        }
+                        const isMyItem = isMy && localMode === 'sub';
+                        html += `
+                            <div class="list-item ${scanned ? 'scanned' : ''} ${isMyItem ? 'active' : ''}">
+                                <span>${globalIdx}</span>
+                                <span>${displayCode}</span>
+                                <span class="badge" style="opacity:0.5;">子项</span>
+                                <span class="status">${scanned ? '✅' : '⬜'}</span>
+                            </div>
+                        `;
+                    }
+                    displayedCount++;
+                }
+
+                if (html === '') {
+                    const msg = viewMode === 'done' ? '暂无已完成的分组' : '暂无未完成的分组';
+                    html = `<div style="padding:20px;text-align:center;color:#94a3b8;">${msg}</div>`;
+                }
+
+                listBody.innerHTML = html;
+                console.log(`[渲染] viewMode=${viewMode}, 显示分组数=${displayedCount}`);
+            }
+
+            // ---- 切换视图模式 ----
+            function toggleViewMode() {
+                // 在 'done' 和 'undone' 之间切换
+                viewMode = (viewMode === 'done') ? 'undone' : 'done';
+                // 更新按钮文字
+                if (viewMode === 'done') {
+                    toggleViewBtn.textContent = '📂 显示未完成扫描列表';
+                    toggleViewBtn.classList.add('active');
+                } else {
+                    toggleViewBtn.textContent = '📂 显示已完成扫描列表';
+                    toggleViewBtn.classList.remove('active');
+                }
+                saveLocalState();
+                renderList();
+                console.log(`🔁 切换视图: viewMode=${viewMode}`);
+            }
+
+            // ---- 上传文件 ----
+            function handleFile(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                        const parsed = parseExcelData(rows);
+                        if (parsed && parsed.length > 0) {
+                            if (ws && ws.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({ type: 'init', groups: parsed }));
+                                fileInfo.textContent = `✅ 已上传: ${file.name} (${parsed.length} 个分组)`;
+                                showToast('📤 数据已发送至服务器', 'success');
+                                state.groups = parsed;
+                            } else {
+                                showToast('❌ 服务器未连接', 'error');
+                            }
+                        }
+                    } catch (err) {
+                        showToast('❌ 解析失败: ' + err.message, 'error');
+                        console.error('解析错误:', err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            function parseExcelData(rows) {
+                let kCol = null,
+                    asCol = null,
+                    statusCol = null;
+                const headers = Object.keys(rows[0] || {});
+                for (const h of headers) {
+                    const clean = h.trim();
+                    if (clean.includes('FBA货件ID') || clean.includes('FBAShipmentID') || clean.includes('货件ID')) kCol = h;
+                    if (clean.includes('Custom box barcode') || clean.includes('自定义箱条码') || clean.includes('箱条码')) asCol =
+                    h;
+                    if (clean.includes('Status') || clean.includes('状态')) statusCol = h;
+                }
+                if (!kCol && !asCol) {
+                    showToast('未找到K列或AS列', 'error');
+                    return null;
+                }
+
+                const raw = [];
+                for (const row of rows) {
+                    let kVal = kCol ? String(row[kCol] || '').trim() : '';
+                    let asVal = asCol ? String(row[asCol] || '').trim() : '';
+                    let statusVal = statusCol ? String(row[statusCol] || '').trim() : '';
+                    let code = kVal || asVal;
+                    if (!code) continue;
+                    let type = 'fba',
+                        prefix = '';
+                    if (kVal) { type = 'fba';
+                        prefix = kVal; } else if (asVal) { type = 'custom';
+                        prefix = extractPrefix(asVal); } else continue;
+                    raw.push({ k: kVal, as: asVal, code: asVal || kVal, prefix, type, status: statusVal });
+                }
+
+                const map = new Map();
+                for (const item of raw) {
+                    const key = item.prefix;
+                    const gkey = key + '|' + item.type;
+                    if (!map.has(gkey)) {
+                        map.set(gkey, { key, type: item.type, items: [], hasCanceled: false });
+                    }
+                    const g = map.get(gkey);
+                    g.items.push({ code: item.code, raw: item });
+                    if (item.status === '已取消') g.hasCanceled = true;
+                }
+                const groups = [];
+                for (const [_, g] of map) {
+                    g.items.sort((a, b) => {
+                        const na = parseInt(a.code.replace(/^.*?(\d+)$/, '$1'));
+                        const nb = parseInt(b.code.replace(/^.*?(\d+)$/, '$1'));
+                        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                        return a.code.localeCompare(b.code);
+                    });
+                    groups.push(g);
+                }
+                groups.sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'fba' ? -1 : 1;
+                    return a.key.localeCompare(b.key);
+                });
+                return groups;
+            }
+
+            function extractPrefix(val) {
+                if (!val) return val;
+                const s = String(val).trim();
+                if (s.includes('/')) return s.split('/')[0].trim();
+                const m = s.match(/^(.*?[A-Za-z])U\d+$/);
+                if (m) return m[1] + 'U';
+                const m2 = s.match(/^(.*?[A-Za-z])\d+$/);
+                if (m2 && m2[1].length >= 2) return m2[1];
+                return s;
+            }
+
+            // ---- 导出 ----
+            function exportTxt() {
+                const lines = [];
+                lines.push('出库复核清单');
+                lines.push(`生成: ${new Date().toLocaleString()}`);
+                lines.push('─'.repeat(50));
+                for (const g of state.groups) {
+                    const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义箱条码';
+                    lines.push(`【${typeLabel}: ${g.key}】 ${g.items.length} 箱`);
+                    for (let i = 0; i < g.items.length; i++) {
+                        const item = g.items[i];
+                        let displayCode = item.code;
+                        if (g.type === 'fba') displayCode = `${g.key}/${i+1}`;
+                        const scanned = state.scanStatus[item.code] || false;
+                        lines.push(`  ${String(i+1).padStart(3,' ')}. ${scanned ? '✅' : '⬜'} ${displayCode}`);
+                    }
+                    lines.push('');
+                }
+                const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `复核清单_${new Date().toISOString().slice(0,10)}.txt`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('📄 TXT已导出', 'success');
+            }
+
+            function exportExcel() {
+                const rows = [
+                    ['#', '分组类型', '分组Key', '子项序号', '子项条码', '已扫描']
+                ];
+                let idx = 0;
+                for (const g of state.groups) {
+                    const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义箱条码';
+                    idx++;
+                    rows.push([idx, typeLabel, g.key, '', `共${g.items.length}箱`, '']);
+                    for (let i = 0; i < g.items.length; i++) {
+                        const item = g.items[i];
+                        let displayCode = item.code;
+                        if (g.type === 'fba') displayCode = `${g.key}/${i+1}`;
+                        const scanned = state.scanStatus[item.code] || false;
+                        rows.push(['', '', '', i + 1, displayCode, scanned ? '是' : '否']);
+                    }
+                }
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, '复核清单');
+                const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([out], { type: 'application/octet-stream' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `复核清单_${new Date().toISOString().slice(0,10)}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('📊 Excel已导出', 'success');
+            }
+
+            // ---- 初始化 ----
+            function init() {
+                console.log('🚀 页面初始化...');
+                loadLocalState();
+                console.log('📂 恢复本地状态:', { localMode, localAddedKeys, viewMode, globalStatsCollapsed });
+
+                // 设置按钮初始文字
+                if (viewMode === 'done') {
+                    toggleViewBtn.textContent = '📂 显示未完成扫描列表';
+                    toggleViewBtn.classList.add('active');
+                } else {
+                    toggleViewBtn.textContent = '📂 显示已完成扫描列表';
+                    toggleViewBtn.classList.remove('active');
+                }
+
+                const savedOperator = localStorage.getItem('operator');
+                const savedVehicle = localStorage.getItem('vehicle');
+                if (savedOperator && savedVehicle) {
+                    operator = savedOperator;
+                    vehicle = savedVehicle;
+                    operatorDisplay.textContent = operator;
+                    vehicleDisplay.textContent = vehicle;
+                    operatorModal.style.display = 'none';
+                } else {
+                    operatorModal.style.display = 'flex';
+                }
+
+                confirmOperatorBtn.addEventListener('click', function() {
+                    const op = operatorInput.value.trim();
+                    const veh = vehicleInput.value.trim();
+                    if (!op || !veh) {
+                        showToast('请填写完整信息', 'error');
+                        return;
+                    }
+                    operator = op;
+                    vehicle = veh;
+                    localStorage.setItem('operator', operator);
+                    localStorage.setItem('vehicle', vehicle);
+                    operatorDisplay.textContent = operator;
+                    vehicleDisplay.textContent = vehicle;
+                    operatorModal.style.display = 'none';
+                    showToast('✅ 身份验证通过', 'success', 2000);
+                    scanInput.focus();
+                });
+
+                connectWebSocket();
+
+                // ---- 折叠事件 ----
+                globalStatsToggle.addEventListener('click', function() {
+                    globalStatsCollapsed = !globalStatsCollapsed;
+                    updateStatusBar();
+                    if (globalStatsCollapsed) {
+                        globalStatsContent.classList.add('collapsed');
+                        globalStatsIcon.classList.add('collapsed');
+                        globalStatsIcon.textContent = '▶';
+                    } else {
+                        globalStatsContent.classList.remove('collapsed');
+                        globalStatsIcon.classList.remove('collapsed');
+                        globalStatsIcon.textContent = '▼';
+                    }
+                    saveLocalState();
+                });
+
+                // ---- 视图切换事件 ----
+                toggleViewBtn.addEventListener('click', toggleViewMode);
+
+                // ---- 扫描事件 ----
+                scanBtn.addEventListener('click', function() {
+                    const code = scanInput.value.trim();
+                    console.log('🔘 点击扫描按钮，条码:', code);
+                    sendScan(code);
+                });
+
+                scanInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const code = this.value.trim();
+                        console.log('⌨️ 回车扫描，条码:', code);
+                        sendScan(code);
+                    }
+                });
+
+                endMainBtn.addEventListener('click', switchToSubMode);
+                resetBatchBtn.addEventListener('click', resetMyKeys);
+                resetAllBtn.addEventListener('click', resetAll);
+
+                fileInput.addEventListener('change', function(e) {
+                    if (this.files.length) handleFile(this.files[0]);
+                    this.value = '';
+                });
+                uploadZone.addEventListener('click', function() { fileInput.click(); });
+                uploadZone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.style.borderColor = '#2563eb';
+                });
+                uploadZone.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    this.style.borderColor = '#cbd5e1';
+                });
+                uploadZone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.borderColor = '#cbd5e1';
+                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+                });
+
+                exportTxtBtn.addEventListener('click', exportTxt);
+                exportExcelBtn.addEventListener('click', exportExcel);
+
+                window.addEventListener('beforeunload', function() {
+                    if (ws) ws.close();
+                });
+
+                updateStatusBar();
+                renderList();
+                setTimeout(() => {
+                    scanInput.focus();
+                    console.log('🔍 输入框已获得焦点');
+                }, 500);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>
