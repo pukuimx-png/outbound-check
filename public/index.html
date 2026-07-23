@@ -106,6 +106,22 @@
         #confirmModal .modal { max-width: 420px; }
         #confirmModal .modal .btn { margin-top: 10px; }
         #confirmModal .modal .btn-cancel { background: #e2e8f0; color: #1e293b; }
+        /* 调试面板 */
+        #debugPanel {
+            background: #fef9c3;
+            border: 1px solid #facc15;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #1e293b;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #debugPanel .error { color: #dc2626; }
+        #debugPanel .success { color: #16a34a; }
+        #debugPanel .info { color: #2563eb; }
+        #debugPanel .url { font-weight: 600; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -115,6 +131,12 @@
             <small id="connectionStatus">● 未连接</small>
             <button class="lang-switch" id="langSwitch">Español</button>
         </h1>
+        <!-- 调试面板 -->
+        <div id="debugPanel">
+            <div><span class="info">🔍 调试信息</span></div>
+            <div id="debugContent">等待连接...</div>
+        </div>
+        <!-- 状态栏 -->
         <div class="status-bar">
             <div class="status-row identity">
                 <span class="operator-info"><span class="label" id="lblOperator">扫描员:</span> <span id="operatorDisplay">-</span></span>
@@ -128,11 +150,13 @@
                 <span><span class="label" id="lblScanned">已扫:</span> <span id="mySubProgress">0/0</span></span>
             </div>
         </div>
+        <!-- 已选地址 -->
         <div class="selected-addresses" id="selectedAddressesDisplay" style="display:none;">
             <span id="lblSelectedAddresses">📍 已选地址：</span>
             <span id="addrTags"></span>
             <button class="change-btn" id="changeAddressBtn">更改</button>
         </div>
+        <!-- 全局统计 -->
         <div class="global-stats-wrapper">
             <div class="global-stats-header" id="globalStatsToggle">
                 <span id="lblGlobalStats">📊 全局统计</span>
@@ -145,6 +169,7 @@
                 <span><span class="label" id="lblUnscannedSub">⬜ 未扫子码/箱数:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
             </div>
         </div>
+        <!-- 地址选择器 -->
         <div class="address-selector" id="addressSelector">
             <div class="title" id="addressToggle">
                 <span id="lblDeliveryAddress">📍 派送地址</span>
@@ -157,22 +182,26 @@
                 <div class="status-msg" id="addressStatusMsg"></div>
             </div>
         </div>
+        <!-- 上传区域 -->
         <div class="upload-zone desktop-only" id="uploadZone">
             <span style="font-size:28px;">📂</span>
             <p id="lblUploadPrompt">点击上传出库表 (.xlsx/.xls)</p>
             <input type="file" id="fileInput" accept=".xlsx,.xls">
             <div class="file-info" id="fileInfo"><span id="lblNotUploaded">未上传</span></div>
         </div>
+        <!-- 扫描输入 -->
         <div class="scan-input-group">
             <input type="text" id="scanInput" placeholder="扫描条码..." autofocus>
             <button class="btn btn-primary" id="scanBtn">↵</button>
         </div>
+        <!-- 操作按钮 -->
         <div class="flex-row">
             <button class="btn btn-warning" id="endMainBtn">✅ 结束主码</button>
             <button class="btn btn-danger" id="forceEndBtn">⏹ 强制结束</button>
             <button class="btn btn-outline" id="resetBatchBtn">🔄 重置我的主码</button>
             <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn">显示全部</button>
         </div>
+        <!-- 高级操作 -->
         <div class="reset-collapse-wrapper">
             <div class="reset-collapse-header" id="resetCollapseToggle">
                 <span id="lblAdvanced">⚙️ 高级操作</span>
@@ -182,11 +211,13 @@
                 <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;">🔁 全部重置（清除所有数据）</button>
             </div>
         </div>
+        <!-- 清单 -->
         <div class="list-container" id="listContainer">
             <div id="listBody" style="max-height:45vh;overflow-y:auto;">
                 <div style="padding:20px;text-align:center;color:#94a3b8;" id="lblNoData">请上传文件或等待数据同步</div>
             </div>
         </div>
+        <!-- 导出按钮 -->
         <div style="margin-top:10px;display:flex;gap:6px;">
             <button class="btn btn-success" id="exportTxtBtn">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn">📊 Excel</button>
@@ -201,6 +232,7 @@
             <button class="btn btn-cancel" id="confirmCancelBtn">取消</button>
         </div>
     </div>
+    <!-- 身份验证模态框 -->
     <div class="modal-overlay" id="operatorModal" style="display:none;">
         <div class="modal">
             <h2 id="modalTitle">🔐 身份验证</h2>
@@ -217,6 +249,20 @@
     <script>
         (function() {
             'use strict';
+
+            // ========== 调试面板 ==========
+            function updateDebug(msg, type = 'info') {
+                const content = document.getElementById('debugContent');
+                const span = document.createElement('div');
+                span.className = type;
+                span.textContent = msg;
+                content.appendChild(span);
+                while (content.children.length > 10) {
+                    content.removeChild(content.firstChild);
+                }
+                const panel = document.getElementById('debugPanel');
+                panel.scrollTop = panel.scrollHeight;
+            }
 
             // ========== 语言包 ==========
             const LANG = {
@@ -861,15 +907,20 @@
                 }
             }
 
-            // ---- WebSocket ----
+            // ---- WebSocket（带调试） ----
             function connectWebSocket() {
                 if (ws && ws.readyState === WebSocket.OPEN) return;
                 try {
+                    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                    const host = window.location.host;
+                    const WS_URL = `${protocol}${host}`;
+                    updateDebug(`🔌 正在连接 WebSocket: ${WS_URL}`, 'info');
                     console.log('🔌 正在连接 WebSocket:', WS_URL);
                     ws = new WebSocket(WS_URL);
                     ws.onopen = function() {
                         connectionStatus.textContent = t('connection');
                         connectionStatus.style.color = '#16a34a';
+                        updateDebug('✅ WebSocket 连接成功！', 'success');
                         showToast(t('connected'), 'success', 2000);
                         if (allGroups.length > 0 && allRecipients.length > 0) {
                             ws.send(JSON.stringify({ type: 'init', groups: allGroups, recipients: allRecipients, deviceId }));
@@ -1002,18 +1053,22 @@
                             console.error('❌ 解析消息失败:', err);
                         }
                     };
-                    ws.onclose = function() {
+                    ws.onclose = function(event) {
                         connectionStatus.textContent = t('disconnected');
                         connectionStatus.style.color = '#dc2626';
+                        const reason = event.reason || '无';
+                        updateDebug(`⚠️ 连接关闭，代码: ${event.code}，原因: ${reason}`, 'error');
                         showToast(t('disconnected_msg'), 'error');
                         if (reconnectTimer) clearTimeout(reconnectTimer);
                         reconnectTimer = setTimeout(connectWebSocket, 3000);
                     };
                     ws.onerror = function(err) {
+                        updateDebug(`❌ WebSocket 错误: ${err.message || '未知错误'}`, 'error');
                         console.error('❌ WebSocket错误:', err);
                         ws.close();
                     };
                 } catch (err) {
+                    updateDebug(`❌ 连接失败: ${err.message}`, 'error');
                     console.error('❌ 连接失败:', err);
                     setTimeout(connectWebSocket, 3000);
                 }
