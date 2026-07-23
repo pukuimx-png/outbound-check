@@ -7,6 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
+        /* 样式保持不变（与之前相同） */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -135,6 +136,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .force-connect-btn:active { transform: scale(0.96); }
+        .version-tag { font-size: 10px; color: #94a3b8; text-align: right; padding: 2px 4px; }
     </style>
 </head>
 <body>
@@ -235,6 +237,7 @@
             <button class="btn btn-success" id="exportTxtBtn" onclick="window.exportTxt()">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn" onclick="window.exportExcel()">📊 Excel</button>
         </div>
+        <div class="version-tag">v2.0 - 20260724</div>
     </div>
     <!-- 确认框 -->
     <div class="modal-overlay" id="confirmModal" style="display:none;">
@@ -261,7 +264,8 @@
 
     <script>
         // ============================================================
-        // 所有函数定义在全局作用域（window），以便 HTML onclick 调用
+        // 版本标识
+        console.log('📦 出库核对 v2.0 - 20260724');
         // ============================================================
 
         // ---- 语言包 ----
@@ -584,12 +588,13 @@
             document.getElementById('langSwitch').textContent = next === 'zh' ? 'Español' : '中文';
         };
 
+        // ---- 更新所有 UI 文本（关键修复） ----
         function updateUI() {
-            // 更新所有带 data-i18n 的元素
+            // 1. 使用 data-i18n 更新所有带该属性的元素
             document.querySelectorAll('[data-i18n]').forEach(function(el) {
                 el.textContent = t(el.getAttribute('data-i18n'));
             });
-            // 手动更新关键元素（包括按钮和占位符）
+            // 2. 显式更新所有关键元素（确保覆盖）
             document.getElementById('pageTitle').textContent = t('pageTitle');
             document.getElementById('lblOperator').textContent = t('operator');
             document.getElementById('lblVehicle').textContent = t('vehicle');
@@ -613,11 +618,11 @@
             document.getElementById('modalTitle').textContent = t('auth_title');
             document.getElementById('lblOperatorName').textContent = t('operator_name');
             document.getElementById('lblVehiclePlate').textContent = t('vehicle_plate');
-            // 输入框占位符
+            // 占位符
             document.getElementById('operatorInput').placeholder = t('operator_name_placeholder');
             document.getElementById('vehicleInput').placeholder = t('vehicle_plate_placeholder');
             document.getElementById('scanInput').placeholder = t('scan_placeholder');
-            // 按钮文本
+            // 所有按钮
             document.getElementById('changeIdentityBtn').textContent = t('change_identity');
             document.getElementById('changeAddressBtn').textContent = t('change');
             document.getElementById('inlineConfirmAddress').textContent = t('confirm_address');
@@ -632,15 +637,18 @@
             document.getElementById('confirmOkBtn').textContent = t('confirm_ok');
             document.getElementById('confirmCancelBtn').textContent = t('confirm_cancel');
             document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
-            // 更新状态栏动态文本
+            // 连接状态
             updateConnectionStatus();
+            // 模式、任务等
             updateModeDisplay();
             updateTaskDisplay();
             updatePendingDisplay();
             updateFileInfo();
             updateFilterButtonText();
+            // 重新渲染清单（含动态文本）
             renderList();
             updateStatusBar();
+            // 语言切换按钮
             document.getElementById('langSwitch').textContent = currentLang === 'zh' ? 'Español' : '中文';
         }
 
@@ -1058,7 +1066,7 @@
             }
         };
 
-        // ---- 结束主码（修复：确保状态正确切换） ----
+        // ---- 结束主码 ----
         window.switchToSubMode = function() {
             if (pendingKeys.length === 0) {
                 showToast(t('no_pending'), 'warning');
@@ -1068,7 +1076,6 @@
                 showToast(t('already_sub'), 'warning');
                 return;
             }
-            // 记录批次
             var batchName = 'Tarima' + (batches.length + 1);
             batches.push({
                 name: batchName,
@@ -1077,11 +1084,9 @@
                 vehicle: vehicle || ''
             });
             showToast(t('batch_recorded') + batchName + ' (' + pendingKeys.length + ' 个主码)', 'success', 3000);
-            // 切换模式
-            taskKeys = pendingKeys.slice();  // 复制当前待添加列表
-            pendingKeys = [];                // 清空待添加
+            taskKeys = pendingKeys.slice();
+            pendingKeys = [];
             localMode = 'sub';
-            // 更新界面
             updateStatusBar();
             renderList();
             showToast(t('switch_sub') + taskKeys.join(', '), 'success', 2000);
@@ -1112,7 +1117,6 @@
                 document.getElementById('confirmModal').style.display = 'none';
                 if (confirmed) {
                     localMode = 'main';
-                    // 注意：强制结束不释放主码，任务保留，但模式切回主码
                     updateStatusBar();
                     renderList();
                     showToast(t('force_end_msg') + (stats.total - stats.scanned) + t('force_end_sub'), 'warning', 4000);
@@ -1723,7 +1727,7 @@
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 页面初始化...');
+            console.log('🚀 页面初始化... (v2.0)');
             loadLocalState();
             console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
@@ -1748,28 +1752,24 @@
                 window.showOperatorModal(false);
             }
 
-            // 上传区域点击触发文件选择
             document.getElementById('uploadZone').onclick = function() { fileInput.click(); };
 
-            // 语言切换按钮已通过 onclick 处理
             updateUI();
             updateStatusBar();
             renderList();
             setTimeout(function() { scanInput.focus(); }, 500);
         }
 
-        // 页面加载后执行
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
         }
 
-        // 暴露全局函数
+        // 暴露全局
         window.connectWebSocket = connectWebSocket;
         window.updateUI = updateUI;
         window.toggleLang = window.toggleLang || function() { /* 已定义 */ };
-        // 其他函数已定义为 window.xxx
     </script>
 </body>
 </html>
