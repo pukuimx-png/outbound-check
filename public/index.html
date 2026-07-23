@@ -7,7 +7,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 样式与之前一致，仅增加语言切换按钮样式 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -15,8 +14,6 @@
         h1 small { font-size: 12px; font-weight: normal; color: #64748b; }
         .lang-switch { background: #e2e8f0; border: none; border-radius: 30px; padding: 4px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .lang-switch:active { transform: scale(0.95); }
-        /* 其余样式与之前完全相同，此处省略，实际使用时包含完整样式 */
-        /* 为节省篇幅，这里只放关键样式，完整代码在下方提供 */
         .status-bar { background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
         .status-row { padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
         .status-row.identity { background: #dbeafe; color: #1e293b; font-weight: 600; font-size: 16px; }
@@ -115,7 +112,6 @@
             <small id="connectionStatus">● 未连接</small>
             <button class="lang-switch" id="langSwitch">🇪🇸 Español</button>
         </h1>
-        <!-- 状态栏 -->
         <div class="status-bar">
             <div class="status-row identity">
                 <span class="operator-info"><span class="label" id="lblOperator">扫描员:</span> <span id="operatorDisplay">-</span></span>
@@ -129,13 +125,11 @@
                 <span><span class="label" id="lblScanned">已扫:</span> <span id="mySubProgress">0/0</span></span>
             </div>
         </div>
-        <!-- 已选地址 -->
         <div class="selected-addresses" id="selectedAddressesDisplay" style="display:none;">
             <span id="lblSelectedAddresses">📍 已选地址：</span>
             <span id="addrTags"></span>
             <button class="change-btn" id="changeAddressBtn" data-i18n="change">更改</button>
         </div>
-        <!-- 全局统计 -->
         <div class="global-stats-wrapper">
             <div class="global-stats-header" id="globalStatsToggle">
                 <span id="lblGlobalStats">📊 全局统计</span>
@@ -148,7 +142,6 @@
                 <span><span class="label" id="lblUnscannedSub">⬜ 未扫子码/箱数:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
             </div>
         </div>
-        <!-- 地址选择器 -->
         <div class="address-selector" id="addressSelector">
             <div class="title" id="addressToggle">
                 <span id="lblDeliveryAddress">📍 派送地址</span>
@@ -161,26 +154,22 @@
                 <div class="status-msg" id="addressStatusMsg"></div>
             </div>
         </div>
-        <!-- 上传区域 -->
         <div class="upload-zone desktop-only" id="uploadZone">
             <span style="font-size:28px;">📂</span>
             <p id="lblUploadPrompt">点击上传出库表 (.xlsx/.xls)</p>
             <input type="file" id="fileInput" accept=".xlsx,.xls">
             <div class="file-info" id="fileInfo"><span id="lblNotUploaded">未上传</span></div>
         </div>
-        <!-- 扫描输入 -->
         <div class="scan-input-group">
             <input type="text" id="scanInput" placeholder="扫描条码..." autofocus>
             <button class="btn btn-primary" id="scanBtn">↵</button>
         </div>
-        <!-- 操作按钮 -->
         <div class="flex-row">
             <button class="btn btn-warning" id="endMainBtn" data-i18n="end_main">✅ 结束主码</button>
             <button class="btn btn-danger" id="forceEndBtn" data-i18n="force_end">⏹ 强制结束</button>
             <button class="btn btn-outline" id="resetBatchBtn" data-i18n="reset_my_keys">🔄 重置我的主码</button>
             <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn" data-i18n="show_all">显示全部</button>
         </div>
-        <!-- 高级操作 -->
         <div class="reset-collapse-wrapper">
             <div class="reset-collapse-header" id="resetCollapseToggle">
                 <span id="lblAdvanced">⚙️ 高级操作</span>
@@ -190,19 +179,16 @@
                 <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;" data-i18n="reset_all">🔁 全部重置（清除所有数据）</button>
             </div>
         </div>
-        <!-- 清单 -->
         <div class="list-container" id="listContainer">
             <div id="listBody" style="max-height:45vh;overflow-y:auto;">
                 <div style="padding:20px;text-align:center;color:#94a3b8;" id="lblNoData">请上传文件或等待数据同步</div>
             </div>
         </div>
-        <!-- 导出 -->
         <div style="margin-top:10px;display:flex;gap:6px;">
             <button class="btn btn-success" id="exportTxtBtn" data-i18n="export_txt">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn" data-i18n="export_excel">📊 Excel</button>
         </div>
     </div>
-    <!-- 模态框 -->
     <div class="modal-overlay" id="operatorModal" style="display:none;">
         <div class="modal">
             <h2 id="modalTitle">🔐 身份验证</h2>
@@ -220,65 +206,51 @@
         (function() {
             'use strict';
 
-            // ===================== 语言包 =====================
+            // ========== 语言包 ==========
             const LANG = {
                 zh: {
-                    // 通用
                     pageTitle: '📦 出库核对',
                     connection: '● 已连接',
                     disconnected: '● 未连接',
-                    // 身份行
                     operator: '扫描员:',
                     vehicle: '车牌:',
                     change_identity: '🔄 更换身份',
-                    // 进度行
                     mode: '本机模式:',
                     task: '当前任务:',
                     pending: '待添加:',
                     scanned: '已扫:',
-                    // 地址
                     selected_addresses: '📍 已选地址：',
                     change: '更改',
-                    // 全局统计
                     global_stats: '📊 全局统计',
                     total_main: '📦 总主码:',
                     total_box: '📦 总箱数:',
                     completed_main: '✅ 已扫主码:',
                     unscanned_sub: '⬜ 未扫子码/箱数:',
-                    // 派送地址
                     delivery_address: '📍 派送地址',
                     selected_count: '已选',
                     addr_unit: '个',
                     confirm_address: '确认地址',
-                    // 上传
                     upload_prompt: '点击上传出库表 (.xlsx/.xls)',
                     not_uploaded: '未上传',
-                    // 操作按钮
                     end_main: '✅ 结束主码',
                     force_end: '⏹ 强制结束',
                     reset_my_keys: '🔄 重置我的主码',
                     show_all: '显示全部',
                     show_done: '📂 隐藏已完成扫描列表',
                     show_undone: '📂 显示未扫描列表',
-                    // 高级
                     advanced: '⚙️ 高级操作',
                     reset_all: '🔁 全部重置（清除所有数据）',
-                    // 清单
                     no_data: '请上传文件或等待数据同步',
-                    // 导出
                     export_txt: '📄 TXT',
                     export_excel: '📊 Excel',
-                    // 模态框
                     auth_title: '🔐 身份验证',
                     operator_name: '扫描员姓名',
                     vehicle_plate: '车牌号',
                     confirm: '确认',
                     cancel: '取消',
-                    // 状态
                     main_mode: '主码',
                     sub_mode: '子码',
                     none: '无',
-                    // 其他
                     scanned_complete: '🎉 当前任务所有子码扫描完成！自动切回主码模式',
                     task_invalid: '🔄 您的任务已失效，已切回主码模式',
                     connected: '✅ 已连接到服务器',
@@ -436,7 +408,6 @@
                 }
             };
 
-            // ===================== 语言管理 =====================
             let currentLang = localStorage.getItem('pda_lang') || 'zh';
 
             function t(key, replacements) {
@@ -454,18 +425,13 @@
                 currentLang = lang;
                 localStorage.setItem('pda_lang', lang);
                 updateUI();
-                // 更新切换按钮文字
-                const btn = document.getElementById('langSwitch');
-                btn.textContent = lang === 'zh' ? '🇪🇸 Español' : '🇨🇳 中文';
+                document.getElementById('langSwitch').textContent = lang === 'zh' ? '🇪🇸 Español' : '🇨🇳 中文';
             }
 
             function updateUI() {
-                // 更新所有带有 data-i18n 属性的元素
                 document.querySelectorAll('[data-i18n]').forEach(el => {
-                    const key = el.getAttribute('data-i18n');
-                    el.textContent = t(key);
+                    el.textContent = t(el.getAttribute('data-i18n'));
                 });
-                // 更新带 id 的固定文本
                 document.getElementById('pageTitle').textContent = t('pageTitle');
                 document.getElementById('lblOperator').textContent = t('operator');
                 document.getElementById('lblVehicle').textContent = t('vehicle');
@@ -489,30 +455,13 @@
                 document.getElementById('modalTitle').textContent = t('auth_title');
                 document.getElementById('lblOperatorName').textContent = t('operator_name');
                 document.getElementById('lblVehiclePlate').textContent = t('vehicle_plate');
-                // 更新按钮文本（已用 data-i18n 处理）
-                // 更新状态栏动态文本（模式、任务等）由 updateStatusBar 处理
-                // 更新连接状态
                 updateConnectionStatus();
-                // 更新模式显示
                 updateModeDisplay();
-                // 更新任务显示
                 updateTaskDisplay();
-                // 更新待添加
                 updatePendingDisplay();
-                // 更新已扫
-                updateScannedDisplay();
-                // 更新全局统计（数字不变，但标签已更新）
-                // 更新地址选择器状态
-                updateAddressSelectorUI();
-                // 更新 toast 需要重新翻译（但 toast 是动态的，由 showToast 处理）
-                // 更新模态框按钮（已用 data-i18n）
-                // 更新文件信息
                 updateFileInfo();
-                // 更新切换按钮文字
-                const btn = document.getElementById('langSwitch');
-                btn.textContent = currentLang === 'zh' ? '🇪🇸 Español' : '🇨🇳 中文';
-                // 更新 toggleDoneBtn 文本（特殊处理）
                 updateFilterButtonText();
+                document.getElementById('langSwitch').textContent = currentLang === 'zh' ? '🇪🇸 Español' : '🇨🇳 中文';
             }
 
             function updateConnectionStatus() {
@@ -520,74 +469,1272 @@
                 const connected = status.textContent.includes('已连接') || status.textContent.includes('Conectado');
                 status.textContent = connected ? t('connection') : t('disconnected');
             }
-
             function updateModeDisplay() {
                 const el = document.getElementById('modeDisplay');
-                const mode = el.textContent.includes('主码') ? 'main_mode' : 'sub_mode';
-                el.textContent = t(mode);
+                el.textContent = el.textContent.includes('主码') ? t('main_mode') : t('sub_mode');
             }
-
             function updateTaskDisplay() {
                 const el = document.getElementById('taskKeysDisplay');
-                const text = el.textContent;
-                if (text === '无' || text === 'Ninguno') {
-                    el.textContent = t('none');
-                } else {
-                    // 保留主码数字
-                }
+                if (el.textContent === '无' || el.textContent === 'Ninguno') el.textContent = t('none');
             }
-
             function updatePendingDisplay() {
                 const el = document.getElementById('pendingDisplay');
-                const text = el.textContent;
-                if (text === '无' || text === 'Ninguno') {
-                    el.textContent = t('none');
-                }
+                if (el.textContent === '无' || el.textContent === 'Ninguno') el.textContent = t('none');
             }
-
-            function updateScannedDisplay() {
-                // 只更新标签，数值不变
-            }
-
-            function updateAddressSelectorUI() {
-                // 更新地址选择器中的动态文本（如“已选 X 个”），在 renderAddressSelector 中处理
-            }
-
             function updateFileInfo() {
                 const el = document.getElementById('fileInfo');
                 if (el.textContent.includes('未上传') || el.textContent.includes('No subido')) {
                     el.textContent = t('not_uploaded');
                 }
             }
-
             function updateFilterButtonText() {
                 const btn = document.getElementById('toggleDoneBtn');
                 const mode = btn.getAttribute('data-filter-mode') || 'all';
-                if (mode === 'all') btn.textContent = t('show_all');
-                else if (mode === 'done') btn.textContent = t('show_done');
-                else if (mode === 'undone') btn.textContent = t('show_undone');
+                btn.textContent = mode === 'all' ? t('show_all') : (mode === 'done' ? t('show_done') : t('show_undone'));
             }
 
-            // 在切换语言时更新动态内容（如 toast、列表、地址等）
-            function refreshDynamicContent() {
+            // ========== 核心功能 ==========
+            // ---- 设备ID ----
+            function getDeviceId() {
+                let id = localStorage.getItem('pda_deviceId');
+                if (!id) {
+                    id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    localStorage.setItem('pda_deviceId', id);
+                }
+                return id;
+            }
+            const deviceId = getDeviceId();
+
+            // ---- DOM refs ----
+            const scanInput = document.getElementById('scanInput');
+            const scanBtn = document.getElementById('scanBtn');
+            const listBody = document.getElementById('listBody');
+            const modeDisplay = document.getElementById('modeDisplay');
+            const taskKeysDisplay = document.getElementById('taskKeysDisplay');
+            const pendingDisplay = document.getElementById('pendingDisplay');
+            const mySubProgress = document.getElementById('mySubProgress');
+            const globalMainCount = document.getElementById('globalMainCount');
+            const globalTotalBox = document.getElementById('globalTotalBox');
+            const globalScanned = document.getElementById('globalScanned');
+            const globalUnscanned = document.getElementById('globalUnscanned');
+            const operatorDisplay = document.getElementById('operatorDisplay');
+            const vehicleDisplay = document.getElementById('vehicleDisplay');
+            const endMainBtn = document.getElementById('endMainBtn');
+            const forceEndBtn = document.getElementById('forceEndBtn');
+            const resetBatchBtn = document.getElementById('resetBatchBtn');
+            const resetAllBtn = document.getElementById('resetAllBtn');
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const exportTxtBtn = document.getElementById('exportTxtBtn');
+            const exportExcelBtn = document.getElementById('exportExcelBtn');
+            const connectionStatus = document.getElementById('connectionStatus');
+            const operatorModal = document.getElementById('operatorModal');
+            const operatorInput = document.getElementById('operatorInput');
+            const vehicleInput = document.getElementById('vehicleInput');
+            const confirmOperatorBtn = document.getElementById('confirmOperatorBtn');
+            const cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
+            const modalTitle = document.getElementById('modalTitle');
+            const toastEl = document.getElementById('toast');
+            const globalStatsToggle = document.getElementById('globalStatsToggle');
+            const globalStatsContent = document.getElementById('globalStatsContent');
+            const globalStatsIcon = document.getElementById('globalStatsIcon');
+            const toggleDoneBtn = document.getElementById('toggleDoneBtn');
+            const resetCollapseToggle = document.getElementById('resetCollapseToggle');
+            const resetCollapseBody = document.getElementById('resetCollapseBody');
+            const resetCollapseArrow = document.getElementById('resetCollapseArrow');
+            const selectedAddressesDisplay = document.getElementById('selectedAddressesDisplay');
+            const addrTags = document.getElementById('addrTags');
+            const changeAddressBtn = document.getElementById('changeAddressBtn');
+            const addressSelector = document.getElementById('addressSelector');
+            const addressGrid = document.getElementById('addressGrid');
+            const inlineSelectedCount = document.getElementById('inlineSelectedCount');
+            const inlineConfirmAddress = document.getElementById('inlineConfirmAddress');
+            const addressStatusMsg = document.getElementById('addressStatusMsg');
+            const changeIdentityBtn = document.getElementById('changeIdentityBtn');
+            const addressToggle = document.getElementById('addressToggle');
+            const addressBody = document.getElementById('addressBody');
+            const addressIcon = document.getElementById('addressIcon');
+
+            // ---- 状态 ----
+            let ws = null;
+            let operator = '';
+            let vehicle = '';
+            let localMode = 'main';
+            let taskKeys = [];
+            let pendingKeys = [];
+            let state = { groups: [], selectedMainKeys: [], scanStatus: {} };
+            let allGroups = [];
+            let allRows = [];
+            let allRecipients = [];
+            let selectedAddresses = [];
+            let addressConfirmed = false;
+            let filterMode = 'all';
+            let globalStatsCollapsed = false;
+            let resetCollapsed = true;
+            let addressCollapsed = false;
+            let batches = [];
+
+            let reconnectTimer = null;
+            let toastTimer = null;
+            const WS_URL = `${window.location.protocol === 'https:' ? 'wss://' : 'ws://'}${window.location.host}`;
+            let isReauth = false;
+            let isInitialized = false;
+
+            // ---- 持久化 ----
+            function saveLocalState() {
+                try {
+                    localStorage.setItem('pda_localMode', localMode);
+                    localStorage.setItem('pda_taskKeys', JSON.stringify(taskKeys));
+                    localStorage.setItem('pda_pendingKeys', JSON.stringify(pendingKeys));
+                    localStorage.setItem('pda_filterMode', filterMode);
+                    localStorage.setItem('pda_statsCollapsed', JSON.stringify(globalStatsCollapsed));
+                    localStorage.setItem('pda_resetCollapsed', JSON.stringify(resetCollapsed));
+                    localStorage.setItem('pda_selectedAddresses', JSON.stringify(selectedAddresses));
+                    localStorage.setItem('pda_addressCollapsed', JSON.stringify(addressCollapsed));
+                    localStorage.setItem('pda_batches', JSON.stringify(batches));
+                } catch (e) { console.warn('保存本地状态失败:', e); }
+            }
+
+            function loadLocalState() {
+                try {
+                    const mode = localStorage.getItem('pda_localMode');
+                    const task = localStorage.getItem('pda_taskKeys');
+                    const pending = localStorage.getItem('pda_pendingKeys');
+                    const filter = localStorage.getItem('pda_filterMode');
+                    const collapsed = localStorage.getItem('pda_statsCollapsed');
+                    const resetCol = localStorage.getItem('pda_resetCollapsed');
+                    const addr = localStorage.getItem('pda_selectedAddresses');
+                    const addrColl = localStorage.getItem('pda_addressCollapsed');
+                    const batchData = localStorage.getItem('pda_batches');
+                    if (mode) localMode = mode;
+                    if (task) { const p = JSON.parse(task); if (Array.isArray(p)) taskKeys = p; }
+                    if (pending) { const p = JSON.parse(pending); if (Array.isArray(p)) pendingKeys = p; }
+                    if (filter && ['all','done','undone'].includes(filter)) filterMode = filter;
+                    if (collapsed) globalStatsCollapsed = JSON.parse(collapsed);
+                    if (resetCol) resetCollapsed = JSON.parse(resetCol);
+                    if (addr) { const p = JSON.parse(addr); if (Array.isArray(p)) selectedAddresses = p; }
+                    if (addrColl !== null) addressCollapsed = JSON.parse(addrColl);
+                    if (batchData) {
+                        const p = JSON.parse(batchData);
+                        if (Array.isArray(p)) {
+                            batches = p.map(b => {
+                                if (b.operator === undefined) b.operator = '';
+                                if (b.vehicle === undefined) b.vehicle = '';
+                                return b;
+                            });
+                        }
+                    }
+                } catch (e) { console.warn('加载本地状态失败:', e); }
+            }
+
+            // ---- Toast ----
+            function showToast(msg, type = 'info', duration = 3000) {
+                if (toastTimer) clearTimeout(toastTimer);
+                toastEl.textContent = msg;
+                toastEl.className = 'toast';
+                if (type === 'success') toastEl.classList.add('success');
+                else if (type === 'error') toastEl.classList.add('error');
+                else if (type === 'warning') toastEl.classList.add('warning');
+                toastEl.classList.add('show');
+                toastTimer = setTimeout(() => {
+                    toastEl.classList.remove('show');
+                }, duration);
+                console.log(`[Toast] ${type}: ${msg}`);
+            }
+
+            // ---- 统计 ----
+            function getTaskStats() {
+                let total = 0,
+                    scanned = 0;
+                for (const key of taskKeys) {
+                    const g = state.groups.find(gr => gr.key === key);
+                    if (g) {
+                        total += g.items.length;
+                        for (const item of g.items) {
+                            if (state.scanStatus[item.code]) scanned++;
+                        }
+                    }
+                }
+                return { total, scanned };
+            }
+
+            function getGlobalStats() {
+                const totalMain = state.groups.length;
+                let totalBoxes = 0,
+                    completedMain = 0,
+                    unscannedBoxes = 0;
+                for (const g of state.groups) {
+                    totalBoxes += g.items.length;
+                    const allScanned = g.items.every(item => state.scanStatus[item.code] || false);
+                    if (allScanned) completedMain++;
+                    for (const item of g.items) {
+                        if (!state.scanStatus[item.code]) unscannedBoxes++;
+                    }
+                }
+                return { totalMain, totalBoxes, completedMain, unscannedBoxes };
+            }
+
+            function isMainCompleted(key) {
+                const g = state.groups.find(gr => gr.key === key);
+                if (!g) return false;
+                return g.items.every(item => state.scanStatus[item.code] || false);
+            }
+
+            function getFilteredMainKeys() {
+                if (selectedAddresses.length === 0) return state.groups.map(g => g.key);
+                const filtered = [];
+                for (const g of state.groups) {
+                    if (g.recipients && g.recipients.some(r => selectedAddresses.includes(r))) {
+                        filtered.push(g.key);
+                    }
+                }
+                return filtered;
+            }
+
+            // ---- 更新状态栏 ----
+            function updateStatusBar() {
+                modeDisplay.textContent = localMode === 'main' ? t('main_mode') : t('sub_mode');
+                taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : t('none');
+                pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : t('none');
+                const stats = getTaskStats();
+                mySubProgress.textContent = `${stats.scanned}/${stats.total}`;
+                endMainBtn.disabled = (localMode === 'sub' || pendingKeys.length === 0);
+                forceEndBtn.disabled = (localMode === 'main' || taskKeys.length === 0);
+
+                const global = getGlobalStats();
+                globalMainCount.textContent = global.totalMain;
+                globalTotalBox.textContent = global.totalBoxes;
+                globalScanned.textContent = `${global.completedMain}/${global.totalMain}`;
+                globalUnscanned.textContent = `${global.unscannedBoxes}/${global.totalBoxes}`;
+
+                if (globalStatsCollapsed) {
+                    globalStatsContent.classList.add('collapsed');
+                    globalStatsIcon.classList.add('collapsed');
+                    globalStatsIcon.textContent = '▶';
+                } else {
+                    globalStatsContent.classList.remove('collapsed');
+                    globalStatsIcon.classList.remove('collapsed');
+                    globalStatsIcon.textContent = '▼';
+                }
+
+                if (resetCollapsed) {
+                    resetCollapseBody.classList.remove('open');
+                    resetCollapseArrow.classList.remove('open');
+                    resetCollapseArrow.textContent = '▶';
+                } else {
+                    resetCollapseBody.classList.add('open');
+                    resetCollapseArrow.classList.add('open');
+                    resetCollapseArrow.textContent = '▼';
+                }
+
+                if (addressCollapsed) {
+                    addressBody.classList.add('collapsed');
+                    addressIcon.classList.add('collapsed');
+                    addressIcon.textContent = '▶';
+                } else {
+                    addressBody.classList.remove('collapsed');
+                    addressIcon.classList.remove('collapsed');
+                    addressIcon.textContent = '▼';
+                }
+
+                if (selectedAddresses.length > 0) {
+                    selectedAddressesDisplay.style.display = 'flex';
+                    addrTags.innerHTML = selectedAddresses.map(a => `<span class="addr-tag">${a}</span>`).join('');
+                } else {
+                    selectedAddressesDisplay.style.display = 'none';
+                }
+
+                saveLocalState();
+
+                if (localMode === 'sub' && taskKeys.length > 0 && stats.total > 0 && stats.scanned === stats.total) {
+                    showToast(t('scanned_complete'), 'success', 3000);
+                    localMode = 'main';
+                    taskKeys = [];
+                    updateStatusBar();
+                    renderList();
+                }
+            }
+
+            // ---- WebSocket ----
+            function connectWebSocket() {
+                if (ws && ws.readyState === WebSocket.OPEN) return;
+                try {
+                    console.log('🔌 正在连接 WebSocket:', WS_URL);
+                    ws = new WebSocket(WS_URL);
+                    ws.onopen = function() {
+                        connectionStatus.textContent = t('connection');
+                        connectionStatus.style.color = '#16a34a';
+                        showToast(t('connected'), 'success', 2000);
+                        if (allGroups.length > 0 && allRecipients.length > 0) {
+                            ws.send(JSON.stringify({ type: 'init', groups: allGroups, recipients: allRecipients, deviceId }));
+                        }
+                    };
+                    ws.onmessage = function(event) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.log('📨 收到服务器消息:', data);
+                            if (data.type === 'state') {
+                                state = data.state;
+                                taskKeys = taskKeys.filter(k => state.selectedMainKeys.includes(k));
+                                pendingKeys = pendingKeys.filter(k => state.selectedMainKeys.includes(k));
+                                if (localMode === 'sub' && taskKeys.length === 0) {
+                                    localMode = 'main';
+                                    showToast(t('task_invalid'), 'warning', 2000);
+                                }
+                                renderList();
+                                updateStatusBar();
+                            } else if (data.type === 'addresses') {
+                                allRecipients = data.recipients || [];
+                                if (allRows.length > 0) {
+                                    let readonly = false;
+                                    if (selectedAddresses.length > 0) {
+                                        const valid = selectedAddresses.every(a => allRecipients.includes(a));
+                                        if (valid) readonly = true;
+                                        else selectedAddresses = [];
+                                    }
+                                    renderAddressSelector(allRecipients, allRows, readonly);
+                                } else {
+                                    renderAddressSelector(allRecipients, [], false);
+                                }
+                            } else if (data.type === 'success') {
+                                const msg = data.message;
+                                console.log('🔍 成功消息内容:', msg);
+                                const patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
+                                if (patchMatch) {
+                                    const patchKey = patchMatch[1];
+                                    const remaining = parseInt(patchMatch[2]);
+                                    showToast(`${t('patch_scan')}${patchKey} (${t('remaining_boxes')})`, 'info', 3000);
+                                    if (!pendingKeys.includes(patchKey)) {
+                                        pendingKeys.push(patchKey);
+                                        renderList();
+                                        updateStatusBar();
+                                    }
+                                    scanInput.value = '';
+                                    scanInput.focus();
+                                    return;
+                                }
+                                const match = msg.match(/已添加主码:\s*([^\s]+)/);
+                                if (match) {
+                                    const key = match[1];
+                                    if (isMainCompleted(key)) {
+                                        showToast(t('main_completed', { key }), 'warning', 2000);
+                                        scanInput.value = '';
+                                        scanInput.focus();
+                                        return;
+                                    }
+                                    const filtered = getFilteredMainKeys();
+                                    if (filtered.length > 0 && !filtered.includes(key)) {
+                                        showToast(t('not_belong', { key }), 'warning', 2000);
+                                        scanInput.value = '';
+                                        scanInput.focus();
+                                        return;
+                                    }
+                                    if (!pendingKeys.includes(key)) {
+                                        pendingKeys.push(key);
+                                        renderList();
+                                        updateStatusBar();
+                                    }
+                                }
+                                showToast(data.message, 'success', 2000);
+                                scanInput.value = '';
+                                scanInput.focus();
+                            } else if (data.type === 'error') {
+                                showToast(data.message, 'error', 3000);
+                                scanInput.value = '';
+                                scanInput.focus();
+                            }
+                        } catch (err) {
+                            console.error('❌ 解析消息失败:', err);
+                        }
+                    };
+                    ws.onclose = function() {
+                        connectionStatus.textContent = t('disconnected');
+                        connectionStatus.style.color = '#dc2626';
+                        showToast(t('disconnected_msg'), 'error');
+                        if (reconnectTimer) clearTimeout(reconnectTimer);
+                        reconnectTimer = setTimeout(connectWebSocket, 3000);
+                    };
+                    ws.onerror = function(err) {
+                        console.error('❌ WebSocket错误:', err);
+                        ws.close();
+                    };
+                } catch (err) {
+                    console.error('❌ 连接失败:', err);
+                    setTimeout(connectWebSocket, 3000);
+                }
+            }
+
+            // ---- 发送扫描 ----
+            function sendScan(code) {
+                if (!code || code.trim() === '') {
+                    showToast(t('invalid_scan'), 'warning');
+                    return;
+                }
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    showToast(t('server_error'), 'error');
+                    return;
+                }
+                const trimmed = code.trim();
+                if (localMode === 'main') {
+                    if (pendingKeys.includes(trimmed)) {
+                        showToast(t('already_added', { key: trimmed }), 'warning', 2000);
+                        scanInput.value = '';
+                        scanInput.focus();
+                        return;
+                    }
+                    const filtered = getFilteredMainKeys();
+                    if (filtered.length > 0 && !filtered.includes(trimmed)) {
+                        showToast(t('not_belong', { key: trimmed }), 'warning', 3000);
+                        scanInput.value = '';
+                        scanInput.focus();
+                        return;
+                    }
+                    ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'main', deviceId }));
+                } else {
+                    let belongs = false;
+                    for (const key of taskKeys) {
+                        const g = state.groups.find(gr => gr.key === key);
+                        if (g) {
+                            if (g.items.find(i => i.code === trimmed)) { belongs = true; break; }
+                            const parts = trimmed.split('/');
+                            if (parts.length === 2 && parts[0] === key) {
+                                const idx = parseInt(parts[1]);
+                                if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) { belongs = true; break; }
+                            }
+                        }
+                    }
+                    if (!belongs) {
+                        showToast(t('sub_not_belong', { code: trimmed }), 'error', 3000);
+                        scanInput.value = '';
+                        scanInput.focus();
+                        return;
+                    }
+                    ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'sub', deviceId }));
+                }
+            }
+
+            // ---- 结束主码 ----
+            function switchToSubMode() {
+                if (pendingKeys.length === 0) {
+                    showToast(t('no_pending'), 'warning');
+                    return;
+                }
+                if (localMode === 'sub') {
+                    showToast(t('already_sub'), 'warning');
+                    return;
+                }
+                const batchName = `Tarima${batches.length + 1}`;
+                batches.push({
+                    name: batchName,
+                    keys: [...pendingKeys],
+                    operator: operator || '',
+                    vehicle: vehicle || ''
+                });
+                showToast(`${t('batch_recorded')}${batchName} (${pendingKeys.length} 个主码)`, 'success', 3000);
+
+                taskKeys = [...pendingKeys];
+                pendingKeys = [];
+                localMode = 'sub';
+                updateStatusBar();
                 renderList();
-                renderAddressSelector(allRecipients, allRows, addressConfirmed);
+                showToast(`${t('switch_sub')}${taskKeys.join(', ')}`, 'success', 2000);
+                scanInput.focus();
+                saveLocalState();
+            }
+
+            // ---- 强制结束 ----
+            function forceEnd() {
+                if (localMode === 'main') {
+                    showToast(t('already_sub'), 'warning');
+                    return;
+                }
+                if (taskKeys.length === 0) {
+                    showToast(t('no_task'), 'warning');
+                    return;
+                }
+                const stats = getTaskStats();
+                if (stats.scanned === stats.total) {
+                    showToast(t('task_complete'), 'info', 2000);
+                    return;
+                }
+                if (!confirm(`确定强制结束吗？\n剩余 ${stats.total - stats.scanned} 个子码未扫，任务将保留以便补扫。`)) {
+                    return;
+                }
+                localMode = 'main';
+                updateStatusBar();
+                renderList();
+                showToast(`${t('force_end_msg')}${stats.total - stats.scanned}${t('force_end_sub')}`, 'warning', 4000);
+                scanInput.focus();
+            }
+
+            // ---- 重置我的主码 ----
+            function resetMyKeys() {
+                const allKeys = [...new Set([...taskKeys, ...pendingKeys])];
+                if (allKeys.length === 0) {
+                    showToast(t('no_keys_to_reset'), 'warning');
+                    return;
+                }
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    showToast(t('server_error'), 'error');
+                    return;
+                }
+                if (!confirm(`${t('confirm_release')}${allKeys.join(', ')}`)) return;
+                ws.send(JSON.stringify({ type: 'release_keys', keys: allKeys, deviceId }));
+                taskKeys = [];
+                pendingKeys = [];
+                localMode = 'main';
+                updateStatusBar();
+                renderList();
+                showToast(`${t('release_keys')}${allKeys.join(', ')}`, 'info', 3000);
+                scanInput.focus();
+            }
+
+            // ---- 全部重置 ----
+            function resetAll() {
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    showToast(t('server_error'), 'error');
+                    return;
+                }
+                if (confirm(t('confirm_reset_all'))) {
+                    ws.send(JSON.stringify({ type: 'reset_all' }));
+                    taskKeys = [];
+                    pendingKeys = [];
+                    localMode = 'main';
+                    batches = [];
+                    updateStatusBar();
+                    saveLocalState();
+                }
+            }
+
+            // ---- 渲染清单 ----
+            function renderList() {
+                const groups = state.groups;
+                if (groups.length === 0) {
+                    listBody.innerHTML = `<div style="padding:20px;text-align:center;color:#94a3b8;">${t('no_data')}</div>`;
+                    return;
+                }
+
+                const filteredKeys = getFilteredMainKeys();
+                let html = '';
+                let globalIdx = 0;
+                const taskSet = new Set(taskKeys);
+                const pendingSet = new Set(pendingKeys);
+
+                for (const g of groups) {
+                    if (filteredKeys.length > 0 && !filteredKeys.includes(g.key)) continue;
+
+                    const isTask = taskSet.has(g.key);
+                    const isPending = pendingSet.has(g.key);
+                    const allScanned = g.items.every(item => state.scanStatus[item.code] || false);
+                    const typeLabel = g.type === 'fba' ? 'FBA' : '自定义';
+                    const typeClass = g.type === 'fba' ? 'fba' : 'custom';
+
+                    if (filterMode === 'done' && !allScanned) continue;
+                    if (filterMode === 'undone' && allScanned) continue;
+
+                    globalIdx++;
+                    let statusText = '';
+                    if (isTask) statusText = '📋 任务中';
+                    else if (isPending) statusText = '⏳ 待添加';
+                    else statusText = '';
+                    const isActive = isTask && localMode === 'sub';
+                    html += `
+                        <div class="list-item group-header ${isActive ? 'active' : ''}">
+                            <span>${globalIdx}</span>
+                            <span class="code">${g.key} <span class="badge">${g.items.length}箱</span> ${statusText} ${allScanned ? '✅ 完成' : ''}</span>
+                            <span class="badge ${typeClass}">${typeLabel}</span>
+                            <span class="status">${allScanned ? '✅' : '⬜'}</span>
+                        </div>
+                    `;
+
+                    for (let i = 0; i < g.items.length; i++) {
+                        const item = g.items[i];
+                        globalIdx++;
+                        const scanned = state.scanStatus[item.code] || false;
+                        let displayCode = item.code;
+                        if (g.type === 'fba') {
+                            displayCode = `${g.key}/${i+1}`;
+                        }
+                        const isActiveItem = isTask && localMode === 'sub';
+                        html += `
+                            <div class="list-item ${scanned ? 'scanned' : ''} ${isActiveItem ? 'active' : ''}">
+                                <span>${globalIdx}</span>
+                                <span>${displayCode}</span>
+                                <span class="badge" style="opacity:0.5;">子项</span>
+                                <span class="status">${scanned ? '✅' : '⬜'}</span>
+                            </div>
+                        `;
+                    }
+                }
+                if (html === '') {
+                    const msg = filterMode === 'done' ? '暂无已完成的主码' :
+                               filterMode === 'undone' ? '暂无未完成的主码' : '没有匹配的分组';
+                    html = `<div style="padding:20px;text-align:center;color:#94a3b8;">${msg}</div>`;
+                }
+                listBody.innerHTML = html;
+            }
+
+            // ---- 构建分组 ----
+            function buildGroupsFromRows(rows) {
+                const raw = [];
+                for (const row of rows) {
+                    let kVal = row.k || '';
+                    let asVal = row.as || '';
+                    let statusVal = row.status || '';
+                    let recipient = row.recipient || '';
+                    let code = kVal || asVal;
+                    if (!code) continue;
+                    let type = 'fba',
+                        prefix = '';
+                    if (kVal) { type = 'fba';
+                        prefix = kVal; } else if (asVal) { type = 'custom';
+                        prefix = extractPrefix(asVal); } else continue;
+                    raw.push({ k: kVal, as: asVal, code: asVal || kVal, prefix, type, status: statusVal, recipient });
+                }
+
+                const map = new Map();
+                for (const item of raw) {
+                    const key = item.prefix;
+                    const gkey = key + '|' + item.type;
+                    if (!map.has(gkey)) {
+                        map.set(gkey, { key, type: item.type, items: [], recipients: new Set(), hasCanceled: false });
+                    }
+                    const g = map.get(gkey);
+                    g.items.push({ code: item.code, raw: item });
+                    if (item.recipient) g.recipients.add(item.recipient);
+                    if (item.status === '已取消') g.hasCanceled = true;
+                }
+                const groups = [];
+                for (const [_, g] of map) {
+                    g.items.sort((a, b) => {
+                        const na = parseInt(a.code.replace(/^.*?(\d+)$/, '$1'));
+                        const nb = parseInt(b.code.replace(/^.*?(\d+)$/, '$1'));
+                        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                        return a.code.localeCompare(b.code);
+                    });
+                    g.recipients = Array.from(g.recipients);
+                    groups.push(g);
+                }
+                groups.sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'fba' ? -1 : 1;
+                    return a.key.localeCompare(b.key);
+                });
+                return groups;
+            }
+
+            function extractPrefix(val) {
+                if (!val) return val;
+                const s = String(val).trim();
+                if (s.includes('/')) return s.split('/')[0].trim();
+                const m = s.match(/^(.*?[A-Za-z])U\d+$/);
+                if (m) return m[1] + 'U';
+                const m2 = s.match(/^(.*?[A-Za-z])\d+$/);
+                if (m2 && m2[1].length >= 2) return m2[1];
+                return s;
+            }
+
+            // ---- 解析文件 ----
+            function parseExcelData(rows) {
+                let kCol = null,
+                    asCol = null,
+                    statusCol = null,
+                    recipientCol = null;
+                const headers = Object.keys(rows[0] || {});
+                console.log('📋 检测到的列名:', headers);
+
+                const excludeKeywords = ['tax', '税号', '税务'];
+
+                for (const h of headers) {
+                    const clean = h.trim();
+                    if (clean.toLowerCase() === 'recipient' || clean.toLowerCase() === '收件人') {
+                        recipientCol = h;
+                        break;
+                    }
+                }
+
+                if (!recipientCol) {
+                    for (const h of headers) {
+                        const clean = h.trim();
+                        const lower = clean.toLowerCase();
+                        if ((lower.includes('recipient') || lower.includes('收件人')) &&
+                            !excludeKeywords.some(kw => lower.includes(kw.toLowerCase()))) {
+                            recipientCol = h;
+                            break;
+                        }
+                    }
+                }
+
+                if (!recipientCol) {
+                    for (const h of headers) {
+                        const clean = h.trim();
+                        const lower = clean.toLowerCase();
+                        if (lower.includes('收件') || lower.includes('recipient')) {
+                            recipientCol = h;
+                            break;
+                        }
+                    }
+                }
+
+                if (!recipientCol && headers.length >= 20) {
+                    recipientCol = headers[19];
+                    if (recipientCol && excludeKeywords.some(kw => recipientCol.toLowerCase().includes(kw.toLowerCase()))) {
+                        recipientCol = null;
+                    }
+                }
+
+                for (const h of headers) {
+                    const clean = h.trim();
+                    if (clean.includes('FBA货件ID') || clean.includes('FBAShipmentID') || clean.includes('货件ID')) kCol = h;
+                    if (clean.includes('Custom box barcode') || clean.includes('自定义箱条码') || clean.includes('箱条码')) asCol = h;
+                    if (clean.includes('Status') || clean.includes('状态')) statusCol = h;
+                }
+                if (!kCol && !asCol) {
+                    showToast(t('no_data_parsed'), 'error');
+                    return null;
+                }
+
+                const parsedRows = [];
+                const recipientSet = new Set();
+                for (const row of rows) {
+                    let kVal = kCol ? String(row[kCol] || '').trim() : '';
+                    let asVal = asCol ? String(row[asCol] || '').trim() : '';
+                    let statusVal = statusCol ? String(row[statusCol] || '').trim() : '';
+                    let recipient = recipientCol ? String(row[recipientCol] || '').trim() : '';
+                    if (!kVal && !asVal) continue;
+                    if (recipient) recipientSet.add(recipient);
+                    parsedRows.push({
+                        k: kVal,
+                        as: asVal,
+                        status: statusVal,
+                        recipient: recipient
+                    });
+                }
+                console.log('📌 提取到的收件人列表:', Array.from(recipientSet));
+                return { rows: parsedRows, recipients: Array.from(recipientSet) };
+            }
+
+            // ---- 地址选择器渲染 ----
+            function renderAddressSelector(recipients, rows, readonly = false) {
+                if (!recipients || recipients.length === 0) {
+                    addressGrid.innerHTML = `<div class="address-empty-tip">${t('no_delivery_address')}</div>`;
+                    inlineSelectedCount.textContent = '0';
+                    if (!readonly) {
+                        inlineConfirmAddress.textContent = t('confirm_address');
+                        inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
+                        addressStatusMsg.textContent = '';
+                        inlineConfirmAddress.onclick = function() {
+                            selectedAddresses = [];
+                            addressConfirmed = true;
+                            renderList();
+                            updateStatusBar();
+                            showToast(t('address_all'), 'success');
+                            renderAddressSelector(recipients, rows, true);
+                        };
+                    } else {
+                        inlineConfirmAddress.textContent = t('change');
+                        inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
+                        addressStatusMsg.textContent = t('current_all');
+                        addressStatusMsg.style.color = '#64748b';
+                        inlineConfirmAddress.onclick = function() {
+                            renderAddressSelector(recipients, rows, false);
+                        };
+                    }
+                    return;
+                }
+
+                addressGrid.innerHTML = '';
+                let selected = [];
+                if (readonly && selectedAddresses.length > 0) {
+                    selected = [...selectedAddresses];
+                } else if (!readonly && selectedAddresses.length > 0) {
+                    selected = [...selectedAddresses];
+                }
+
+                recipients.forEach(addr => {
+                    const item = document.createElement('div');
+                    item.className = 'address-item';
+                    if (selected.includes(addr)) item.classList.add('selected');
+                    if (readonly && !selected.includes(addr)) item.classList.add('disabled');
+                    item.innerHTML = `
+                        <span class="checkbox"></span>
+                        <span>${addr}</span>
+                    `;
+                    if (!readonly) {
+                        item.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const idx = selected.indexOf(addr);
+                            if (idx >= 0) {
+                                selected.splice(idx, 1);
+                                item.classList.remove('selected');
+                            } else {
+                                selected.push(addr);
+                                item.classList.add('selected');
+                            }
+                            inlineSelectedCount.textContent = selected.length;
+                        });
+                    }
+                    addressGrid.appendChild(item);
+                });
+
+                inlineSelectedCount.textContent = selected.length;
+
+                if (readonly) {
+                    inlineConfirmAddress.textContent = t('change');
+                    inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
+                    addressStatusMsg.textContent = t('confirmed_addresses', { count: selected.length });
+                    addressStatusMsg.style.color = '#16a34a';
+                    inlineConfirmAddress.onclick = function() {
+                        renderAddressSelector(recipients, rows, false);
+                    };
+                } else {
+                    inlineConfirmAddress.textContent = t('confirm_address');
+                    inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
+                    addressStatusMsg.textContent = '';
+                    inlineConfirmAddress.onclick = function() {
+                        if (selected.length === 0) {
+                            showToast(t('please_select_address'), 'warning');
+                            return;
+                        }
+                        selectedAddresses = selected;
+                        addressConfirmed = true;
+                        renderList();
+                        updateStatusBar();
+                        showToast(t('address_selected', { count: selected.length }), 'success');
+                        renderAddressSelector(recipients, rows, true);
+                    };
+                }
+            }
+
+            // ---- 上传文件 ----
+            function handleFile(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                        const parsed = parseExcelData(rows);
+                        if (!parsed) return;
+                        if (parsed.rows.length === 0) {
+                            showToast(t('no_data_parsed'), 'error');
+                            return;
+                        }
+
+                        fileInfo.innerHTML = `<span id="lblNotUploaded">${t('parsed_info')}${file.name} (${parsed.rows.length}${t('rows_info')}${parsed.recipients.length}${t('recipients_info')})</span>`;
+                        allRows = parsed.rows;
+
+                        const completeGroups = buildGroupsFromRows(parsed.rows);
+                        allGroups = completeGroups;
+                        const recips = parsed.recipients || [];
+                        allRecipients = recips;
+
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId }));
+                        } else {
+                            showToast(t('waiting_upload'), 'info');
+                        }
+
+                        if (recips.length > 0) {
+                            showToast(t('no_recipient', { count: recips.length }), 'success', 3000);
+                        } else {
+                            showToast(t('no_recipient_found'), 'warning', 3000);
+                        }
+
+                        let readonly = false;
+                        if (selectedAddresses.length > 0) {
+                            const valid = selectedAddresses.every(a => recips.includes(a));
+                            if (valid) readonly = true;
+                            else selectedAddresses = [];
+                        }
+                        renderAddressSelector(recips, parsed.rows, readonly);
+
+                    } catch (err) {
+                        showToast(`${t('file_upload_error')}${err.message}`, 'error');
+                        console.error('解析错误:', err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            // ---- 切换过滤模式 ----
+            function toggleFilterMode() {
+                const modes = ['all', 'done', 'undone'];
+                const idx = modes.indexOf(filterMode);
+                filterMode = modes[(idx + 1) % 3];
+                toggleDoneBtn.setAttribute('data-filter-mode', filterMode);
+                saveLocalState();
+                renderList();
                 updateStatusBar();
             }
 
-            // ===================== 原有功能 =====================
-            // 此处保留您之前的所有功能代码（设备ID、WebSocket、扫描、批次等）
-            // 为了节省篇幅，我在此处只展示语言切换核心，实际使用时请合并完整功能。
-            // 由于此文件已包含完整功能，以下为占位，实际部署时应包含全部代码。
-            // 由于回答长度限制，我会在下方提供完整文件的下载链接或完整的文本（但这里无法上传文件）。
+            // ---- 导出 TXT ----
+            function exportTxt() {
+                const lines = [];
+                lines.push('出库复核清单');
+                lines.push(`生成: ${new Date().toLocaleString()}`);
+                if (selectedAddresses.length) lines.push(`收件人: ${selectedAddresses.join(', ')}`);
+                lines.push('─'.repeat(50));
 
-            // 注意：实际部署时，您需要将上述语言包和切换逻辑合并到您的完整 index.html 中。
-            // 我已将完整代码整合，您只需复制上面的完整 HTML 即可。
+                if (batches.length === 0) {
+                    for (const g of state.groups) {
+                        if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(r => selectedAddresses.includes(r))) continue;
+                        const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义箱条码';
+                        lines.push(`【${typeLabel}: ${g.key}】 ${g.items.length} 箱`);
+                        for (let i = 0; i < g.items.length; i++) {
+                            const item = g.items[i];
+                            let displayCode = item.code;
+                            if (g.type === 'fba') displayCode = `${g.key}/${i+1}`;
+                            const scanned = state.scanStatus[item.code] || false;
+                            lines.push(`  ${String(i+1).padStart(3,' ')}. ${scanned ? '✅' : '⬜'} ${displayCode}`);
+                        }
+                        lines.push('');
+                    }
+                } else {
+                    for (const batch of batches) {
+                        const identity = batch.operator || batch.vehicle ? `${batch.operator} ${batch.vehicle}`.trim() : '未知';
+                        lines.push(`📦 ${batch.name} (${identity})`);
+                        lines.push(`包含主码: ${batch.keys.join(', ')}`);
+                        for (const key of batch.keys) {
+                            const g = state.groups.find(gr => gr.key === key);
+                            if (!g) continue;
+                            const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义箱条码';
+                            lines.push(`  ${typeLabel}: ${g.key} (${g.items.length} 箱)`);
+                            for (let i = 0; i < g.items.length; i++) {
+                                const item = g.items[i];
+                                let displayCode = item.code;
+                                if (g.type === 'fba') displayCode = `${g.key}/${i+1}`;
+                                const scanned = state.scanStatus[item.code] || false;
+                                lines.push(`    ${String(i+1).padStart(3,' ')}. ${scanned ? '✅' : '⬜'} ${displayCode}`);
+                            }
+                        }
+                        lines.push('');
+                    }
+                }
 
-            // 以下为原有功能（略）
-            // ...（此处省略原有数千行功能代码，它们已包含在上方的完整 HTML 中）
+                const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `复核清单_${new Date().toISOString().slice(0,10)}.txt`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('📄 TXT已导出', 'success');
+            }
 
-            console.log('🌐 语言已切换至', currentLang);
+            // ---- 导出 Excel ----
+            function exportExcel() {
+                const wb = XLSX.utils.book_new();
+
+                if (batches.length === 0) {
+                    const rows = [];
+                    const now = new Date();
+                    const dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    rows.push(['扫描员:', operator || '']);
+                    rows.push(['车牌:', vehicle || '']);
+                    rows.push(['导出日期:', dateStr]);
+                    rows.push([]);
+                    const headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Subitem', '已扫描/Escaneado', '箱数/Cajas'];
+                    rows.push(headers);
+                    let itemIdx = 0;
+                    const filteredKeys = getFilteredMainKeys();
+                    for (const key of filteredKeys) {
+                        const g = state.groups.find(gr => gr.key === key);
+                        if (!g) continue;
+                        if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(r => selectedAddresses.includes(r))) continue;
+                        const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
+                        const totalBoxes = g.items.length;
+                        itemIdx++;
+                        rows.push([itemIdx, typeLabel, g.key, '', `共${totalBoxes}箱/Total ${totalBoxes} Cajas`, '', '']);
+                        for (let i = 0; i < g.items.length; i++) {
+                            const item = g.items[i];
+                            let displayCode = item.code;
+                            if (g.type === 'fba') displayCode = `${g.key}/${i+1}`;
+                            const scanned = state.scanStatus[item.code] || false;
+                            rows.push(['', '', '', i + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0]);
+                        }
+                    }
+                    const ws = XLSX.utils.aoa_to_sheet(rows);
+                    ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }];
+                    const sheetName = vehicle ? `Placas ${vehicle}` : '复核清单';
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                } else {
+                    const groups = {};
+                    for (const batch of batches) {
+                        const key = `${batch.operator}|${batch.vehicle}`;
+                        if (!groups[key]) {
+                            groups[key] = {
+                                operator: batch.operator || '',
+                                vehicle: batch.vehicle || '',
+                                batches: []
+                            };
+                        }
+                        groups[key].batches.push(batch);
+                    }
+
+                    for (const key of Object.keys(groups)) {
+                        const group = groups[key];
+                        const rows = [];
+                        const now = new Date();
+                        const dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        rows.push(['扫描员:', group.operator]);
+                        rows.push(['车牌:', group.vehicle]);
+                        rows.push(['导出日期:', dateStr]);
+                        rows.push([]);
+
+                        const headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Subitem', '已扫描/Escaneado', '箱数/Cajas'];
+
+                        for (const batch of group.batches) {
+                            rows.push(['批次', batch.name]);
+                            rows.push(['主码列表/Master Envio', batch.keys.join(', ')]);
+                            rows.push([]);
+                            rows.push(headers);
+
+                            let itemIdx = 0;
+                            for (const batchKey of batch.keys) {
+                                const g = state.groups.find(gr => gr.key === batchKey);
+                                if (!g) continue;
+                                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(r => selectedAddresses.includes(r))) continue;
+                                const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
+                                const totalBoxes = g.items.length;
+                                itemIdx++;
+                                rows.push([itemIdx, typeLabel, g.key, '', `共${totalBoxes}箱/Total ${totalBoxes} Cajas`, '', '']);
+                                for (let i = 0; i < g.items.length; i++) {
+                                    const item = g.items[i];
+                                    let displayCode = item.code;
+                                    if (g.type === 'fba') displayCode = `${g.key}/${i+1}`;
+                                    const scanned = state.scanStatus[item.code] || false;
+                                    rows.push(['', '', '', i + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0]);
+                                }
+                            }
+                            rows.push([]);
+                        }
+                        while (rows.length > 0 && rows[rows.length - 1].length === 0) rows.pop();
+
+                        const ws = XLSX.utils.aoa_to_sheet(rows);
+                        ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }];
+                        let sheetName = group.vehicle ? `Placas ${group.vehicle}` : (group.operator || '未命名');
+                        const existingSheets = wb.SheetNames;
+                        let suffix = 1;
+                        let baseName = sheetName;
+                        while (existingSheets.includes(sheetName)) {
+                            sheetName = `${baseName}_${suffix}`;
+                            suffix++;
+                        }
+                        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    }
+                }
+
+                const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([out], { type: 'application/octet-stream' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `复核清单_${new Date().toISOString().slice(0,10)}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('📊 Excel已按批次导出', 'success');
+            }
+
+            // ---- 更改地址 ----
+            function changeAddress() {
+                if (allRows.length === 0) {
+                    showToast(t('upload_first'), 'warning');
+                    return;
+                }
+                const recips = allRecipients;
+                if (recips.length === 0) {
+                    showToast(t('no_delivery_info'), 'warning');
+                    return;
+                }
+                renderAddressSelector(recips, allRows, false);
+            }
+
+            // ---- 身份验证 ----
+            function showOperatorModal(reauth = false) {
+                isReauth = reauth;
+                if (reauth) {
+                    modalTitle.textContent = t('auth_title');
+                    operatorInput.value = operator || '';
+                    vehicleInput.value = vehicle || '';
+                } else {
+                    modalTitle.textContent = t('auth_title');
+                    operatorInput.value = '';
+                    vehicleInput.value = '';
+                }
+                operatorModal.style.display = 'flex';
+                setTimeout(() => operatorInput.focus(), 100);
+            }
+
+            function hideOperatorModal() {
+                operatorModal.style.display = 'none';
+            }
+
+            function confirmIdentity() {
+                const op = operatorInput.value.trim();
+                const veh = vehicleInput.value.trim();
+                if (!op || !veh) {
+                    showToast('请填写完整信息', 'error');
+                    return;
+                }
+                operator = op;
+                vehicle = veh;
+                localStorage.setItem('operator', operator);
+                localStorage.setItem('vehicle', vehicle);
+                operatorDisplay.textContent = operator;
+                vehicleDisplay.textContent = vehicle;
+
+                hideOperatorModal();
+                showToast(t('identity_updated'), 'success', 2000);
+                scanInput.focus();
+
+                if (isReauth) {
+                    isReauth = false;
+                } else {
+                    if (!isInitialized) {
+                        proceedAfterAuth();
+                        isInitialized = true;
+                    }
+                }
+            }
+
+            // ---- 初始化 ----
+            function init() {
+                console.log('🚀 页面初始化...');
+                loadLocalState();
+                console.log('📂 恢复本地状态:', { localMode, taskKeys, pendingKeys, filterMode, globalStatsCollapsed,
+                    resetCollapsed, selectedAddresses, addressCollapsed, batches });
+
+                const savedOperator = localStorage.getItem('operator');
+                const savedVehicle = localStorage.getItem('vehicle');
+                if (savedOperator && savedVehicle) {
+                    operator = savedOperator;
+                    vehicle = savedVehicle;
+                    operatorDisplay.textContent = operator;
+                    vehicleDisplay.textContent = vehicle;
+                    isInitialized = true;
+                    proceedAfterAuth();
+                } else {
+                    showOperatorModal(false);
+                }
+
+                changeIdentityBtn.addEventListener('click', function() {
+                    showOperatorModal(true);
+                });
+
+                confirmOperatorBtn.addEventListener('click', confirmIdentity);
+
+                cancelOperatorBtn.addEventListener('click', function() {
+                    hideOperatorModal();
+                    if (!isInitialized) {
+                        showToast('请完成身份验证', 'warning');
+                        setTimeout(() => showOperatorModal(false), 300);
+                    }
+                });
+
+                operatorInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') confirmIdentity();
+                });
+                vehicleInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') confirmIdentity();
+                });
+
+                operatorModal.addEventListener('click', function(e) {
+                    if (e.target === operatorModal && isInitialized) {
+                        hideOperatorModal();
+                    }
+                });
+
+                addressToggle.addEventListener('click', function() {
+                    addressCollapsed = !addressCollapsed;
+                    updateStatusBar();
+                    saveLocalState();
+                });
+
+                changeAddressBtn.addEventListener('click', changeAddress);
+            }
+
+            // ---- 身份验证通过后的初始化 ----
+            function proceedAfterAuth() {
+                connectWebSocket();
+
+                globalStatsToggle.addEventListener('click', function() {
+                    globalStatsCollapsed = !globalStatsCollapsed;
+                    updateStatusBar();
+                    saveLocalState();
+                });
+
+                resetCollapseToggle.addEventListener('click', function() {
+                    resetCollapsed = !resetCollapsed;
+                    updateStatusBar();
+                    saveLocalState();
+                });
+
+                toggleDoneBtn.addEventListener('click', toggleFilterMode);
+
+                scanBtn.addEventListener('click', function() {
+                    const code = scanInput.value.trim();
+                    sendScan(code);
+                });
+
+                scanInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const code = this.value.trim();
+                        sendScan(code);
+                    }
+                });
+
+                endMainBtn.addEventListener('click', switchToSubMode);
+                forceEndBtn.addEventListener('click', forceEnd);
+                resetBatchBtn.addEventListener('click', resetMyKeys);
+                resetAllBtn.addEventListener('click', resetAll);
+
+                fileInput.addEventListener('change', function(e) {
+                    if (this.files.length) handleFile(this.files[0]);
+                    this.value = '';
+                });
+                uploadZone.addEventListener('click', function() { fileInput.click(); });
+                uploadZone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.style.borderColor = '#2563eb';
+                });
+                uploadZone.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    this.style.borderColor = '#cbd5e1';
+                });
+                uploadZone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.borderColor = '#cbd5e1';
+                    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+                });
+
+                exportTxtBtn.addEventListener('click', exportTxt);
+                exportExcelBtn.addEventListener('click', exportExcel);
+
+                window.addEventListener('beforeunload', function() {
+                    if (ws) ws.close();
+                });
+
+                updateStatusBar();
+                renderList();
+                setTimeout(() => {
+                    scanInput.focus();
+                }, 500);
+
+                // 语言切换
+                document.getElementById('langSwitch').addEventListener('click', function() {
+                    setLang(currentLang === 'zh' ? 'es' : 'zh');
+                });
+                // 初始语言
+                setLang(currentLang);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
         })();
     </script>
 </body>
