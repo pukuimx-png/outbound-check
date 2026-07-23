@@ -116,7 +116,7 @@
             <div class="status-row identity">
                 <span class="operator-info"><span class="label" id="lblOperator">扫描员:</span> <span id="operatorDisplay">-</span></span>
                 <span class="operator-info"><span class="label" id="lblVehicle">车牌:</span> <span id="vehicleDisplay">-</span></span>
-                <button class="change-identity-btn" id="changeIdentityBtn">🔄 更换身份</button>
+                <button class="change-identity-btn" id="changeIdentityBtn" data-i18n="change_identity">🔄 更换身份</button>
             </div>
             <div class="status-row progress">
                 <span><span class="label" id="lblMode">本机模式:</span> <span id="modeDisplay">主码</span></span>
@@ -306,6 +306,8 @@
                     address_changed: '已切换为显示全部数据',
                     no_delivery_info: '没有收件人信息，无法选择',
                     confirm_release_all: '确定释放所有主码吗？\n将释放: ',
+                    box_singular: '箱',
+                    box_plural: '箱',
                 },
                 es: {
                     pageTitle: '📦 Verificación de Salida',
@@ -313,7 +315,7 @@
                     disconnected: '● Desconectado',
                     operator: 'Operador:',
                     vehicle: 'Matrícula:',
-                    change_identity: '🔄 Cambiar identidad',
+                    change_identity: '🔄 Cambio operador',
                     mode: 'Modo local:',
                     task: 'Tarea actual:',
                     pending: 'Pendientes:',
@@ -321,9 +323,9 @@
                     selected_addresses: '📍 Direcciones seleccionadas:',
                     change: 'Cambiar',
                     global_stats: '📊 Estadísticas globales',
-                    total_main: '📦 Total Claves:',
+                    total_main: '📦 Total Códigos:',
                     total_box: '📦 Total Cajas:',
-                    completed_main: '✅ Claves escaneadas:',
+                    completed_main: '✅ Códigos escaneados:',
                     unscanned_sub: '⬜ Subcajas no escaneadas:',
                     delivery_address: '📍 Dirección de entrega',
                     selected_count: 'Seleccionados',
@@ -331,9 +333,9 @@
                     confirm_address: 'Confirmar dirección',
                     upload_prompt: 'Haga clic para cargar tabla de salida (.xlsx/.xls)',
                     not_uploaded: 'No subido',
-                    end_main: '✅ Finalizar clave',
+                    end_main: '✅ Finalizar código',
                     force_end: '⏹ Forzar finalización',
-                    reset_my_keys: '🔄 Restablecer mis claves',
+                    reset_my_keys: '🔄 Restablecer mis códigos',
                     show_all: 'Mostrar todo',
                     show_done: '📂 Ocultar lista escaneada',
                     show_undone: '📂 Mostrar lista no escaneada',
@@ -347,32 +349,32 @@
                     vehicle_plate: 'Matrícula',
                     confirm: 'Confirmar',
                     cancel: 'Cancelar',
-                    main_mode: 'Clave',
-                    sub_mode: 'Subclave',
-                    none: 'Ninguno',
-                    scanned_complete: '🎉 ¡Todas las subclaves escaneadas! Cambiando a modo clave',
-                    task_invalid: '🔄 Tarea inválida, cambiando a modo clave',
+                    main_mode: 'Código principal',
+                    sub_mode: 'Subcódigo',
+                    none: 'No',
+                    scanned_complete: '🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código',
+                    task_invalid: '🔄 Tarea inválida, cambiando a modo código',
                     connected: '✅ Conectado al servidor',
                     disconnected_msg: '⚠️ Desconectado, reconectando...',
                     identity_updated: '✅ Identidad actualizada',
-                    switch_sub: '🔁 Cambiado a modo subclave, tarea: ',
+                    switch_sub: '🔁 Cambiado a modo subcódigo, tarea: ',
                     force_end_msg: '⏹ Finalización forzada, restan ',
-                    force_end_sub: ' subclaves por escanear',
-                    release_keys: '🔄 Claves liberadas: ',
+                    force_end_sub: ' subcódigos por escanear',
+                    release_keys: '🔄 Códigos liberados: ',
                     reset_all_msg: '🔁 Todos los registros restablecidos',
                     batch_recorded: '📦 Lote registrado: ',
-                    patch_scan: '📦 Reponer clave: ',
+                    patch_scan: '📦 Reponer código: ',
                     remaining_boxes: ' cajas restantes',
-                    already_added: '⏳ Clave {key} ya está en la lista pendiente',
-                    not_belong: '⚠️ Clave {key} no pertenece a la dirección seleccionada',
-                    no_pending: 'No ha agregado ninguna clave',
-                    already_sub: 'Ya está en modo subclave',
+                    already_added: '⏳ Código {key} ya está en la lista pendiente',
+                    not_belong: '⚠️ Código {key} no pertenece a la dirección seleccionada',
+                    no_pending: 'No ha agregado ningún código',
+                    already_sub: 'Ya está en modo subcódigo',
                     no_task: 'No hay tarea para finalizar',
                     task_complete: 'Tarea completada, no es necesario forzar',
-                    no_keys_to_reset: 'No tiene claves para restablecer',
+                    no_keys_to_reset: 'No tiene códigos para restablecer',
                     server_disconnected: '❌ Servidor no conectado',
-                    confirm_release: '¿Liberar todas las claves?\nSe liberarán: ',
-                    confirm_reset_all: '¿Restablecer todos los registros? (Se borrarán todas las claves y estados)',
+                    confirm_release: '¿Liberar todos los códigos?\nSe liberarán: ',
+                    confirm_reset_all: '¿Restablecer todos los registros? (Se borrarán todos los códigos y estados)',
                     no_address: 'Sin información de destinatario, no se puede seleccionar',
                     upload_first: 'Primero cargue un archivo',
                     parsed_info: '✅ Archivo parseado: ',
@@ -385,16 +387,16 @@
                     file_upload_error: '❌ Error al parsear: ',
                     invalid_scan: 'Ingrese un código de barras',
                     server_error: '❌ Servidor no conectado',
-                    main_not_found: '❌ Clave no encontrada: ',
-                    main_completed: '⏳ Clave {key} completada, no se puede agregar nuevamente',
-                    main_locked: '❌ Clave {key} bloqueada por otro dispositivo',
-                    main_added: '✅ Clave agregada: ',
-                    main_patch: '✅ Clave para reponer: ',
+                    main_not_found: '❌ Código no encontrado: ',
+                    main_completed: '⏳ Código {key} completado, no se puede agregar nuevamente',
+                    main_locked: '❌ Código {key} bloqueado por otro dispositivo',
+                    main_added: '✅ Código agregado: ',
+                    main_patch: '✅ Código para reponer: ',
                     patch_remaining: ' ({remaining} cajas restantes)',
-                    sub_invalid: '❌ Subclave inválida: ',
-                    sub_not_belong: '❌ Subclave {code} no pertenece a la tarea actual',
-                    sub_already_scanned: '⏳ Subclave {code} ya escaneada',
-                    sub_scanned: '✅ Subclave escaneada: ',
+                    sub_invalid: '❌ Subcódigo inválido: ',
+                    sub_not_belong: '❌ Subcódigo {code} no pertenece a la tarea actual',
+                    sub_already_scanned: '⏳ Subcódigo {code} ya escaneada',
+                    sub_scanned: '✅ Subcódigo escaneada: ',
                     sub_progress: ' ({scanned}/{total})',
                     address_selected: '✅ Se seleccionaron {count} direcciones, lista filtrada',
                     address_all: 'Cambiado a mostrar todos los datos',
@@ -404,7 +406,9 @@
                     please_select_address: 'Seleccione al menos una dirección',
                     address_changed: 'Cambiado a mostrar todos los datos',
                     no_delivery_info: 'Sin información de destinatario, no se puede seleccionar',
-                    confirm_release_all: '¿Liberar todas las claves?\nSe liberarán: ',
+                    confirm_release_all: '¿Liberar todos los códigos?\nSe liberarán: ',
+                    box_singular: 'caja',
+                    box_plural: 'cajas',
                 }
             };
 
@@ -418,6 +422,15 @@
                     }
                 }
                 return text;
+            }
+
+            // ---- 箱数翻译辅助 ----
+            function translateBoxCount(count) {
+                if (currentLang === 'zh') {
+                    return `${count}箱`;
+                } else {
+                    return count === 1 ? `1 ${t('box_singular')}` : `${count} ${t('box_plural')}`;
+                }
             }
 
             function setLang(lang) {
@@ -462,6 +475,10 @@
                 updateFileInfo();
                 updateFilterButtonText();
                 document.getElementById('langSwitch').textContent = currentLang === 'zh' ? '🇪🇸 Español' : '🇨🇳 中文';
+                // 重新渲染清单（更新箱数翻译）
+                renderList();
+                // 更新统计标签
+                updateStatusBar();
             }
 
             function updateConnectionStatus() {
@@ -471,15 +488,15 @@
             }
             function updateModeDisplay() {
                 const el = document.getElementById('modeDisplay');
-                el.textContent = el.textContent.includes('主码') ? t('main_mode') : t('sub_mode');
+                el.textContent = el.textContent.includes('主码') || el.textContent.includes('Código principal') ? t('main_mode') : t('sub_mode');
             }
             function updateTaskDisplay() {
                 const el = document.getElementById('taskKeysDisplay');
-                if (el.textContent === '无' || el.textContent === 'Ninguno') el.textContent = t('none');
+                if (el.textContent === '无' || el.textContent === 'No') el.textContent = t('none');
             }
             function updatePendingDisplay() {
                 const el = document.getElementById('pendingDisplay');
-                if (el.textContent === '无' || el.textContent === 'Ninguno') el.textContent = t('none');
+                if (el.textContent === '无' || el.textContent === 'No') el.textContent = t('none');
             }
             function updateFileInfo() {
                 const el = document.getElementById('fileInfo');
@@ -804,7 +821,7 @@
                                 if (patchMatch) {
                                     const patchKey = patchMatch[1];
                                     const remaining = parseInt(patchMatch[2]);
-                                    showToast(`${t('patch_scan')}${patchKey} (${t('remaining_boxes')})`, 'info', 3000);
+                                    showToast(`${t('patch_scan')}${patchKey} (${remaining} ${t('box_singular')})`, 'info', 3000);
                                     if (!pendingKeys.includes(patchKey)) {
                                         pendingKeys.push(patchKey);
                                         renderList();
@@ -931,7 +948,7 @@
                     operator: operator || '',
                     vehicle: vehicle || ''
                 });
-                showToast(`${t('batch_recorded')}${batchName} (${pendingKeys.length} 个主码)`, 'success', 3000);
+                showToast(`${t('batch_recorded')}${batchName} (${pendingKeys.length} ${t('main_mode')})`, 'success', 3000);
 
                 taskKeys = [...pendingKeys];
                 pendingKeys = [];
@@ -1029,6 +1046,7 @@
                     const allScanned = g.items.every(item => state.scanStatus[item.code] || false);
                     const typeLabel = g.type === 'fba' ? 'FBA' : '自定义';
                     const typeClass = g.type === 'fba' ? 'fba' : 'custom';
+                    const boxText = translateBoxCount(g.items.length);
 
                     if (filterMode === 'done' && !allScanned) continue;
                     if (filterMode === 'undone' && allScanned) continue;
@@ -1042,7 +1060,7 @@
                     html += `
                         <div class="list-item group-header ${isActive ? 'active' : ''}">
                             <span>${globalIdx}</span>
-                            <span class="code">${g.key} <span class="badge">${g.items.length}箱</span> ${statusText} ${allScanned ? '✅ 完成' : ''}</span>
+                            <span class="code">${g.key} <span class="badge">${boxText}</span> ${statusText} ${allScanned ? '✅ 完成' : ''}</span>
                             <span class="badge ${typeClass}">${typeLabel}</span>
                             <span class="status">${allScanned ? '✅' : '⬜'}</span>
                         </div>
@@ -1061,7 +1079,7 @@
                             <div class="list-item ${scanned ? 'scanned' : ''} ${isActiveItem ? 'active' : ''}">
                                 <span>${globalIdx}</span>
                                 <span>${displayCode}</span>
-                                <span class="badge" style="opacity:0.5;">子项</span>
+                                <span class="badge" style="opacity:0.5;">${t('sub_mode')}</span>
                                 <span class="status">${scanned ? '✅' : '⬜'}</span>
                             </div>
                         `;
