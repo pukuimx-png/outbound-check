@@ -103,7 +103,7 @@
         .toast.warning { background: #f59e0b; }
         .toggle-done-btn { background: #e2e8f0; border: 1px solid #cbd5e1; padding: 4px 14px; border-radius: 30px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.15s; color: #1e293b; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; }
         .toggle-done-btn.active { background: #dbeafe; border-color: #2563eb; color: #2563eb; }
-        /* 自定义 confirm 模态框 */
+        /* 自定义确认框样式 */
         #confirmModal .modal { max-width: 420px; }
         #confirmModal .modal .btn { margin-top: 10px; }
         #confirmModal .modal .btn-cancel { background: #e2e8f0; color: #1e293b; }
@@ -462,7 +462,7 @@
                 }
             }
 
-            // ---- 自定义 Confirm 对话框 ----
+            // ---- 自定义 Confirm ----
             function showConfirm(message, title = '⚠️ 确认') {
                 return new Promise((resolve) => {
                     document.getElementById('confirmMessage').textContent = message;
@@ -490,6 +490,11 @@
                 localStorage.setItem('pda_lang', lang);
                 updateUI();
                 document.getElementById('langSwitch').textContent = lang === 'zh' ? 'Español' : '中文';
+                // 重新绑定更换身份按钮（确保点击有效）
+                document.getElementById('changeIdentityBtn').onclick = function() {
+                    console.log('🔄 更换身份按钮被点击');
+                    showOperatorModal(true);
+                };
             }
 
             function updateUI() {
@@ -718,10 +723,9 @@
             // ---- Toast ----
             function showToast(msg, type = 'info', duration = 3000) {
                 if (toastTimer) clearTimeout(toastTimer);
-                // 尝试翻译常见消息（简单替换）
+                // 简单翻译常见错误（如果有）
                 if (currentLang !== 'zh') {
-                    // 注意：主码添加、子码扫描等已在消息处理中处理，这里只处理通用错误
-                    // 保留原样，因为主要消息已在 ws.onmessage 中定制
+                    // 保持原样，因为主消息已在 ws.onmessage 中翻译
                 }
                 toastEl.textContent = msg;
                 toastEl.className = 'toast';
@@ -893,7 +897,7 @@
                                 const msg = data.message;
                                 console.log('🔍 成功消息内容:', msg);
 
-                                // ---- 处理补扫 ----
+                                // 补扫
                                 const patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
                                 if (patchMatch) {
                                     const patchKey = patchMatch[1];
@@ -909,7 +913,7 @@
                                     return;
                                 }
 
-                                // ---- 处理主码添加 ----
+                                // 主码添加
                                 const mainMatch = msg.match(/已添加主码:\s*([^\s]+)/);
                                 if (mainMatch) {
                                     const key = mainMatch[1];
@@ -928,7 +932,6 @@
                                     }
                                     if (!pendingKeys.includes(key)) {
                                         pendingKeys.push(key);
-                                        // 显示翻译后的消息
                                         const group = state.groups.find(g => g.key === key);
                                         const boxText = group ? translateBoxCount(group.items.length) : '';
                                         showToast(t('main_added') + key + (boxText ? ' (' + boxText + ')' : ''), 'success', 2000);
@@ -940,13 +943,13 @@
                                     return;
                                 }
 
-                                // ---- 处理子码扫描 ----
+                                // 子码扫描
                                 const subMatch = msg.match(/✅ 已扫描:\s*([^\s]+)\s*\((\d+)\/(\d+)\)/);
                                 if (subMatch) {
                                     const code = subMatch[1];
                                     const scanned = parseInt(subMatch[2]);
                                     const total = parseInt(subMatch[3]);
-                                    // 乐观更新：立即标记为已扫
+                                    // 乐观更新
                                     for (const g of state.groups) {
                                         for (const item of g.items) {
                                             if (item.code === code) {
@@ -963,15 +966,13 @@
                                     return;
                                 }
 
-                                // ---- 其他成功消息（释放、重置等） ----
+                                // 其他成功消息
                                 showToast(msg, 'success', 2000);
                                 scanInput.value = '';
                                 scanInput.focus();
                             } else if (data.type === 'error') {
-                                // 错误消息翻译（简单处理）
                                 let errMsg = data.message;
                                 if (currentLang !== 'zh') {
-                                    // 尝试替换常见关键词
                                     errMsg = errMsg.replace(/❌ 主码 /g, '❌ Código ');
                                     errMsg = errMsg.replace(/已被其他设备锁定，不可重复扫描/g, 'bloqueado por otro dispositivo, no se puede repetir');
                                     errMsg = errMsg.replace(/❌ 无效子码: /g, '❌ Subcódigo inválido: ');
@@ -1700,6 +1701,7 @@
 
             // ---- 身份验证 ----
             function showOperatorModal(reauth = false) {
+                console.log('📌 显示身份验证模态框, reauth=', reauth);
                 isReauth = reauth;
                 if (reauth) {
                     modalTitle.textContent = t('auth_title');
@@ -1766,10 +1768,11 @@
                     showOperatorModal(false);
                 }
 
-                changeIdentityBtn.addEventListener('click', function() {
+                // 绑定更换身份按钮（使用 onclick 确保不会被覆盖）
+                document.getElementById('changeIdentityBtn').onclick = function() {
                     console.log('🔄 更换身份按钮被点击');
                     showOperatorModal(true);
-                });
+                };
 
                 confirmOperatorBtn.addEventListener('click', confirmIdentity);
 
