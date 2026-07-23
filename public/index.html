@@ -103,7 +103,6 @@
         .toast.warning { background: #f59e0b; }
         .toggle-done-btn { background: #e2e8f0; border: 1px solid #cbd5e1; padding: 4px 14px; border-radius: 30px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.15s; color: #1e293b; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; }
         .toggle-done-btn.active { background: #dbeafe; border-color: #2563eb; color: #2563eb; }
-        /* 自定义确认框样式 */
         #confirmModal .modal { max-width: 420px; }
         #confirmModal .modal .btn { margin-top: 10px; }
         #confirmModal .modal .btn-cancel { background: #e2e8f0; color: #1e293b; }
@@ -268,6 +267,7 @@
                     none: '无',
                     in_task: '任务中',
                     pending_to_add: '待添加',
+                    completed: '完成',
                     scanned_complete: '🎉 当前任务所有子码扫描完成！自动切回主码模式',
                     task_invalid: '🔄 您的任务已失效，已切回主码模式',
                     connected: '✅ 已连接到服务器',
@@ -377,6 +377,7 @@
                     none: 'No',
                     in_task: 'En tarea',
                     pending_to_add: 'Pendiente',
+                    completed: 'Completado',
                     scanned_complete: '🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código',
                     task_invalid: '🔄 Tarea inválida, cambiando a modo código',
                     connected: '✅ Conectado al servidor',
@@ -472,6 +473,7 @@
                 });
             }
 
+            // 确认对话框按钮事件绑定（一次性，不随语言变化）
             document.getElementById('confirmOkBtn').addEventListener('click', function() {
                 document.getElementById('confirmModal').style.display = 'none';
                 if (confirmResolve) confirmResolve(true);
@@ -490,10 +492,23 @@
                 localStorage.setItem('pda_lang', lang);
                 updateUI();
                 document.getElementById('langSwitch').textContent = lang === 'zh' ? 'Español' : '中文';
-                // 重新绑定更换身份按钮（确保点击有效）
+                // 重新绑定更换身份按钮
                 document.getElementById('changeIdentityBtn').onclick = function() {
                     console.log('🔄 更换身份按钮被点击');
                     showOperatorModal(true);
+                };
+                // 重新绑定模态框确认/取消（虽然未用onclick，但文本已更新）
+                document.getElementById('confirmOkBtn').textContent = t('confirm_ok');
+                document.getElementById('confirmCancelBtn').textContent = t('confirm_cancel');
+                document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
+                // 重新绑定身份验证模态框按钮（防止被覆盖）
+                document.getElementById('confirmOperatorBtn').onclick = confirmIdentity;
+                document.getElementById('cancelOperatorBtn').onclick = function() {
+                    hideOperatorModal();
+                    if (!isInitialized) {
+                        showToast('请完成身份验证', 'warning');
+                        setTimeout(() => showOperatorModal(false), 300);
+                    }
                 };
             }
 
@@ -723,10 +738,6 @@
             // ---- Toast ----
             function showToast(msg, type = 'info', duration = 3000) {
                 if (toastTimer) clearTimeout(toastTimer);
-                // 简单翻译常见错误（如果有）
-                if (currentLang !== 'zh') {
-                    // 保持原样，因为主消息已在 ws.onmessage 中翻译
-                }
                 toastEl.textContent = msg;
                 toastEl.className = 'toast';
                 if (type === 'success') toastEl.classList.add('success');
@@ -1187,11 +1198,12 @@
                     if (isTask) statusText = '📋 ' + t('in_task');
                     else if (isPending) statusText = '⏳ ' + t('pending_to_add');
                     else statusText = '';
+                    const completedText = t('completed');
                     const isActive = isTask && localMode === 'sub';
                     html += `
                         <div class="list-item group-header ${isActive ? 'active' : ''}">
                             <span>${globalIdx}</span>
-                            <span class="code">${g.key} <span class="badge">${boxText}</span> ${statusText} ${allScanned ? '✅ 完成' : ''}</span>
+                            <span class="code">${g.key} <span class="badge">${boxText}</span> ${statusText} ${allScanned ? '✅ ' + completedText : ''}</span>
                             <span class="badge ${typeClass}">${typeLabel}</span>
                             <span class="status">${allScanned ? '✅' : '⬜'}</span>
                         </div>
@@ -1774,16 +1786,17 @@
                     showOperatorModal(true);
                 };
 
-                confirmOperatorBtn.addEventListener('click', confirmIdentity);
-
-                cancelOperatorBtn.addEventListener('click', function() {
+                // 绑定身份验证模态框按钮（使用 onclick 确保稳定）
+                document.getElementById('confirmOperatorBtn').onclick = confirmIdentity;
+                document.getElementById('cancelOperatorBtn').onclick = function() {
                     hideOperatorModal();
                     if (!isInitialized) {
                         showToast('请完成身份验证', 'warning');
                         setTimeout(() => showOperatorModal(false), 300);
                     }
-                });
+                };
 
+                // 输入框回车
                 operatorInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') confirmIdentity();
                 });
@@ -1791,6 +1804,7 @@
                     if (e.key === 'Enter') confirmIdentity();
                 });
 
+                // 点击模态框外部关闭（仅当已初始化）
                 operatorModal.addEventListener('click', function(e) {
                     if (e.target === operatorModal && isInitialized) {
                         hideOperatorModal();
