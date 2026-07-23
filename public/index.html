@@ -7,6 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
+        /* 样式保持与之前一致，此处省略，实际部署时包含完整样式 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -106,7 +107,7 @@
         #confirmModal .modal { max-width: 420px; }
         #confirmModal .modal .btn { margin-top: 10px; }
         #confirmModal .modal .btn-cancel { background: #e2e8f0; color: #1e293b; }
-        /* 调试面板 & 强制按钮 */
+        /* 调试面板 */
         #debugPanel {
             background: #fef9c3;
             border: 1px solid #facc15;
@@ -121,7 +122,6 @@
         #debugPanel .error { color: #dc2626; }
         #debugPanel .success { color: #16a34a; }
         #debugPanel .info { color: #2563eb; }
-        #debugPanel .url { font-weight: 600; word-break: break-all; }
         .force-connect-btn {
             background: #facc15;
             color: #1e293b;
@@ -143,7 +143,7 @@
         <h1>
             <span id="pageTitle">📦 出库核对</span>
             <small id="connectionStatus">● 未连接</small>
-            <button class="lang-switch" id="langSwitch">Español</button>
+            <button class="lang-switch" id="langSwitch" onclick="window.toggleLang()">Español</button>
         </h1>
         <!-- 调试面板 -->
         <div id="debugPanel">
@@ -157,7 +157,7 @@
             <div class="status-row identity">
                 <span class="operator-info"><span class="label" id="lblOperator">扫描员:</span> <span id="operatorDisplay">-</span></span>
                 <span class="operator-info"><span class="label" id="lblVehicle">车牌:</span> <span id="vehicleDisplay">-</span></span>
-                <button class="change-identity-btn" id="changeIdentityBtn" onclick="showOperatorModal(true)">🔄 更换身份</button>
+                <button class="change-identity-btn" id="changeIdentityBtn" onclick="window.showOperatorModal(true)">🔄 更换身份</button>
             </div>
             <div class="status-row progress">
                 <span><span class="label" id="lblMode">本机模式:</span> <span id="modeDisplay">主码</span></span>
@@ -170,11 +170,11 @@
         <div class="selected-addresses" id="selectedAddressesDisplay" style="display:none;">
             <span id="lblSelectedAddresses">📍 已选地址：</span>
             <span id="addrTags"></span>
-            <button class="change-btn" id="changeAddressBtn" onclick="changeAddress()">更改</button>
+            <button class="change-btn" id="changeAddressBtn" onclick="window.changeAddress()">更改</button>
         </div>
         <!-- 全局统计 -->
         <div class="global-stats-wrapper">
-            <div class="global-stats-header" id="globalStatsToggle" onclick="toggleGlobalStats()">
+            <div class="global-stats-header" id="globalStatsToggle" onclick="window.toggleGlobalStats()">
                 <span id="lblGlobalStats">📊 全局统计</span>
                 <span class="toggle-icon" id="globalStatsIcon">▼</span>
             </div>
@@ -187,14 +187,14 @@
         </div>
         <!-- 地址选择器 -->
         <div class="address-selector" id="addressSelector">
-            <div class="title" id="addressToggle" onclick="toggleAddressCollapse()">
+            <div class="title" id="addressToggle" onclick="window.toggleAddressCollapse()">
                 <span id="lblDeliveryAddress">📍 派送地址</span>
                 <span class="count"><span id="lblSelectedCount">已选</span> <span id="inlineSelectedCount">0</span> <span id="lblAddrUnit">个</span></span>
                 <span class="toggle-icon" id="addressIcon">▼</span>
             </div>
             <div class="body" id="addressBody">
                 <div class="address-grid" id="addressGrid"></div>
-                <button class="btn btn-primary confirm-address-btn" id="inlineConfirmAddress" onclick="confirmAddressSelection()">确认地址</button>
+                <button class="btn btn-primary confirm-address-btn" id="inlineConfirmAddress" onclick="window.confirmAddressSelection()">确认地址</button>
                 <div class="status-msg" id="addressStatusMsg"></div>
             </div>
         </div>
@@ -202,29 +202,29 @@
         <div class="upload-zone desktop-only" id="uploadZone">
             <span style="font-size:28px;">📂</span>
             <p id="lblUploadPrompt">点击上传出库表 (.xlsx/.xls)</p>
-            <input type="file" id="fileInput" accept=".xlsx,.xls">
+            <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="window.handleFile(this.files[0])">
             <div class="file-info" id="fileInfo"><span id="lblNotUploaded">未上传</span></div>
         </div>
         <!-- 扫描 -->
         <div class="scan-input-group">
             <input type="text" id="scanInput" placeholder="扫描条码..." autofocus>
-            <button class="btn btn-primary" id="scanBtn" onclick="handleScan()">↵</button>
+            <button class="btn btn-primary" id="scanBtn" onclick="window.handleScan()">↵</button>
         </div>
         <!-- 按钮 -->
         <div class="flex-row">
-            <button class="btn btn-warning" id="endMainBtn" onclick="switchToSubMode()">✅ 结束主码</button>
-            <button class="btn btn-danger" id="forceEndBtn" onclick="forceEnd()">⏹ 强制结束</button>
-            <button class="btn btn-outline" id="resetBatchBtn" onclick="resetMyKeys()">🔄 重置我的主码</button>
-            <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn" onclick="toggleFilterMode()">显示全部</button>
+            <button class="btn btn-warning" id="endMainBtn" onclick="window.switchToSubMode()">✅ 结束主码</button>
+            <button class="btn btn-danger" id="forceEndBtn" onclick="window.forceEnd()">⏹ 强制结束</button>
+            <button class="btn btn-outline" id="resetBatchBtn" onclick="window.resetMyKeys()">🔄 重置我的主码</button>
+            <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn" onclick="window.toggleFilterMode()">显示全部</button>
         </div>
         <!-- 高级 -->
         <div class="reset-collapse-wrapper">
-            <div class="reset-collapse-header" id="resetCollapseToggle" onclick="toggleResetCollapse()">
+            <div class="reset-collapse-header" id="resetCollapseToggle" onclick="window.toggleResetCollapse()">
                 <span id="lblAdvanced">⚙️ 高级操作</span>
                 <span class="arrow" id="resetCollapseArrow">▶</span>
             </div>
             <div class="reset-collapse-body" id="resetCollapseBody">
-                <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;" onclick="resetAll()">🔁 全部重置（清除所有数据）</button>
+                <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;" onclick="window.resetAll()">🔁 全部重置（清除所有数据）</button>
             </div>
         </div>
         <!-- 清单 -->
@@ -233,8 +233,8 @@
         </div>
         <!-- 导出 -->
         <div style="margin-top:10px;display:flex;gap:6px;">
-            <button class="btn btn-success" id="exportTxtBtn" onclick="exportTxt()">📄 TXT</button>
-            <button class="btn btn-primary" id="exportExcelBtn" onclick="exportExcel()">📊 Excel</button>
+            <button class="btn btn-success" id="exportTxtBtn" onclick="window.exportTxt()">📄 TXT</button>
+            <button class="btn btn-primary" id="exportExcelBtn" onclick="window.exportExcel()">📊 Excel</button>
         </div>
     </div>
     <!-- 确认框 -->
@@ -242,8 +242,8 @@
         <div class="modal">
             <h2 id="confirmTitle">⚠️ 确认</h2>
             <p id="confirmMessage" style="white-space:pre-wrap; word-break:break-word;"></p>
-            <button class="btn btn-primary" id="confirmOkBtn" onclick="confirmOk()">确定</button>
-            <button class="btn btn-cancel" id="confirmCancelBtn" onclick="confirmCancel()">取消</button>
+            <button class="btn btn-primary" id="confirmOkBtn" onclick="window.confirmOk()">确定</button>
+            <button class="btn btn-cancel" id="confirmCancelBtn" onclick="window.confirmCancel()">取消</button>
         </div>
     </div>
     <!-- 身份验证模态框 -->
@@ -254,1279 +254,1519 @@
             <input type="text" id="operatorInput" placeholder="请输入姓名" autofocus>
             <label id="lblVehiclePlate">车牌号</label>
             <input type="text" id="vehicleInput" placeholder="请输入车牌号">
-            <button class="btn btn-primary" id="confirmOperatorBtn" onclick="confirmIdentity()">确认</button>
-            <button class="btn btn-cancel" id="cancelOperatorBtn" onclick="cancelIdentity()">取消</button>
+            <button class="btn btn-primary" id="confirmOperatorBtn" onclick="window.confirmIdentity()">确认</button>
+            <button class="btn btn-cancel" id="cancelOperatorBtn" onclick="window.cancelIdentity()">取消</button>
         </div>
     </div>
     <div class="toast" id="toast"></div>
 
     <script>
-        (function() {
-            'use strict';
+        // ============================================================
+        // 所有函数定义在全局作用域（window），以便 HTML onclick 调用
+        // ============================================================
 
-            // ========== 调试面板 ==========
-            function updateDebug(msg, type) {
-                type = type || 'info';
-                var content = document.getElementById('debugContent');
-                var span = document.createElement('div');
-                span.className = type;
-                span.textContent = msg;
-                content.appendChild(span);
-                while (content.children.length > 10) {
-                    content.removeChild(content.firstChild);
+        // ---- 语言包 ----
+        var LANG = {
+            zh: {
+                pageTitle: '📦 出库核对',
+                connection: '● 已连接',
+                disconnected: '● 未连接',
+                operator: '扫描员:',
+                vehicle: '车牌:',
+                change_identity: '🔄 更换身份',
+                mode: '本机模式:',
+                task: '当前任务:',
+                pending: '待添加:',
+                scanned: '已扫:',
+                selected_addresses: '📍 已选地址：',
+                change: '更改',
+                global_stats: '📊 全局统计',
+                total_main: '📦 总主码:',
+                total_box: '📦 总箱数:',
+                completed_main: '✅ 已扫主码:',
+                unscanned_sub: '⬜ 未扫子码/箱数:',
+                delivery_address: '📍 派送地址',
+                selected_count: '已选',
+                addr_unit: '个',
+                confirm_address: '确认地址',
+                upload_prompt: '点击上传出库表 (.xlsx/.xls)',
+                not_uploaded: '未上传',
+                end_main: '✅ 结束主码',
+                force_end: '⏹ 强制结束',
+                reset_my_keys: '🔄 重置我的主码',
+                show_all: '显示全部',
+                show_done: '📂 隐藏已完成扫描列表',
+                show_undone: '📂 显示未扫描列表',
+                advanced: '⚙️ 高级操作',
+                reset_all: '🔁 全部重置（清除所有数据）',
+                no_data: '请上传文件或等待数据同步',
+                export_txt: '📄 TXT',
+                export_excel: '📊 Excel',
+                auth_title: '🔐 身份验证',
+                operator_name: '扫描员姓名',
+                vehicle_plate: '车牌号',
+                operator_name_placeholder: '请输入姓名',
+                vehicle_plate_placeholder: '请输入车牌号',
+                confirm: '确认',
+                cancel: '取消',
+                main_mode: '主码',
+                sub_mode: '子码',
+                none: '无',
+                in_task: '任务中',
+                pending_to_add: '待添加',
+                completed: '完成',
+                scanned_complete: '🎉 当前任务所有子码扫描完成！自动切回主码模式',
+                task_invalid: '🔄 您的任务已失效，已切回主码模式',
+                connected: '✅ 已连接到服务器',
+                disconnected_msg: '⚠️ 连接断开，尝试重连...',
+                identity_updated: '✅ 身份已更新',
+                switch_sub: '🔁 已切换至子码模式，当前任务: ',
+                force_end_msg: '⏹ 已强制结束，剩余 ',
+                force_end_sub: ' 个子码未扫，可后续补扫',
+                release_keys: '🔄 已释放主码: ',
+                reset_all_msg: '🔁 已重置所有扫描记录',
+                batch_recorded: '📦 已记录批次: ',
+                patch_scan: '📦 补扫主码: ',
+                remaining_boxes: ' 箱未扫',
+                already_added: '⏳ 主码 {key} 已在待添加列表中',
+                not_belong: '⚠️ 主码 {key} 不属于当前选中的地址',
+                no_pending: '您还没有添加任何主码',
+                already_sub: '已经是子码模式',
+                no_task: '没有任务需要结束',
+                task_complete: '任务已全部完成，无需强制结束',
+                no_keys_to_reset: '您没有主码需要重置',
+                server_disconnected: '❌ 服务器未连接',
+                confirm_release: '确定释放所有主码吗？\n将释放: ',
+                confirm_reset_all: '确定重置所有扫描记录吗？（将清除所有主码和扫描状态）',
+                no_address: '没有收件人信息，无法选择',
+                upload_first: '请先上传文件',
+                parsed_info: '✅ 已解析: ',
+                rows_info: ' 行，',
+                recipients_info: ' 个收件人',
+                no_data_parsed: '未解析到有效数据',
+                no_recipient: '📍 已识别 {count} 个收件人地址',
+                no_recipient_found: '⚠️ 未找到收件人地址信息',
+                waiting_upload: '⏳ 等待连接后上传数据...',
+                file_upload_error: '❌ 解析失败: ',
+                invalid_scan: '请输入条码',
+                server_error: '❌ 服务器未连接',
+                main_not_found: '❌ 未找到主码: ',
+                main_completed: '⏳ 主码 {key} 已完成，无需再次添加',
+                main_locked: '❌ 主码 {key} 已被其他设备锁定，不可重复扫描',
+                main_added: '✅ 已添加主码: ',
+                main_patch: '✅ 可补扫主码: ',
+                patch_remaining: ' (剩余 {remaining} 箱未扫)',
+                sub_invalid: '❌ 无效子码: ',
+                sub_not_belong: '❌ 子码 {code} 不属于当前任务主码',
+                sub_already_scanned: '⏳ 子码 {code} 已扫描过',
+                sub_scanned: '✅ 已扫描: ',
+                sub_progress: ' ({scanned}/{total})',
+                address_selected: '✅ 已选择 {count} 个地址，清单已过滤',
+                address_all: '已切换为显示全部数据',
+                no_delivery_address: '📭 暂无派送地址，点击下方按钮显示全部数据',
+                current_all: '当前显示全部数据',
+                confirmed_addresses: '✅ 已选 {count} 个地址，点击“更改地址”可重新选择',
+                please_select_address: '请至少选择一个地址',
+                address_changed: '已切换为显示全部数据',
+                no_delivery_info: '没有收件人信息，无法选择',
+                confirm_release_all: '确定释放所有主码吗？\n将释放: ',
+                box_singular: '箱',
+                box_plural: '箱',
+                force_end_confirm: '确定强制结束吗？\n剩余 {remaining} 个子码未扫，任务将保留以便补扫。',
+                confirm_ok: '确定',
+                confirm_cancel: '取消',
+                scan_placeholder: '扫描条码...',
+            },
+            es: {
+                pageTitle: '📦 Verificación de Salida',
+                connection: '● Conectado',
+                disconnected: '● Desconectado',
+                operator: 'Operador:',
+                vehicle: 'Matrícula:',
+                change_identity: '🔄 Cambio operador',
+                mode: 'Modo local:',
+                task: 'Tarea actual:',
+                pending: 'Pendientes:',
+                scanned: 'Escaneado:',
+                selected_addresses: '📍 Direcciones seleccionadas:',
+                change: 'Cambiar',
+                global_stats: '📊 Estadísticas globales',
+                total_main: '📦 Total Códigos:',
+                total_box: '📦 Total Cajas:',
+                completed_main: '✅ Envio escaneados:',
+                unscanned_sub: '⬜ Subcajas no escaneadas:',
+                delivery_address: '📍 Dirección de entrega',
+                selected_count: 'Seleccionados',
+                addr_unit: '',
+                confirm_address: 'Confirmar dirección',
+                upload_prompt: 'Haga clic para cargar tabla de salida (.xlsx/.xls)',
+                not_uploaded: 'No subido',
+                end_main: '✅ Finalizar código',
+                force_end: '⏹ Forzar finalización',
+                reset_my_keys: '🔄 Restablecer mis códigos',
+                show_all: 'Mostrar todo',
+                show_done: '📂 Ocultar lista escaneada',
+                show_undone: '📂 Mostrar lista no escaneada',
+                advanced: '⚙️ Operaciones avanzadas',
+                reset_all: '🔁 Restablecer todo (borrar todos los datos)',
+                no_data: 'Cargue un archivo o espere sincronización',
+                export_txt: '📄 TXT',
+                export_excel: '📊 Excel',
+                auth_title: '🔐 Autenticación',
+                operator_name: 'Nombre del operador',
+                vehicle_plate: 'Matrícula',
+                operator_name_placeholder: 'Nombre del operador',
+                vehicle_plate_placeholder: 'Matrícula',
+                confirm: 'Confirmar',
+                cancel: 'Cancelar',
+                main_mode: 'Código principal',
+                sub_mode: 'Subcódigo',
+                none: 'No',
+                in_task: 'En tarea',
+                pending_to_add: 'Pendiente',
+                completed: 'Completado',
+                scanned_complete: '🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código',
+                task_invalid: '🔄 Tarea inválida, cambiando a modo código',
+                connected: '✅ Conectado al servidor',
+                disconnected_msg: '⚠️ Desconectado, reconectando...',
+                identity_updated: '✅ Identidad actualizada',
+                switch_sub: '🔁 Cambiado a modo subcódigo, tarea: ',
+                force_end_msg: '⏹ Finalización forzada, restan ',
+                force_end_sub: ' subcódigos por escanear',
+                release_keys: '🔄 Códigos liberados: ',
+                reset_all_msg: '🔁 Todos los registros restablecidos',
+                batch_recorded: '📦 Lote registrado: ',
+                patch_scan: '📦 Reponer código: ',
+                remaining_boxes: ' cajas restantes',
+                already_added: '⏳ Código {key} ya está en la lista pendiente',
+                not_belong: '⚠️ Código {key} no pertenece a la dirección seleccionada',
+                no_pending: 'No ha agregado ningún código',
+                already_sub: 'Ya está en modo subcódigo',
+                no_task: 'No hay tarea para finalizar',
+                task_complete: 'Tarea completada, no es necesario forzar',
+                no_keys_to_reset: 'No tiene códigos para restablecer',
+                server_disconnected: '❌ Servidor no conectado',
+                confirm_release: '¿Liberar todos los códigos?\nSe liberarán: ',
+                confirm_reset_all: '¿Restablecer todos los registros? (Se borrarán todos los códigos y estados)',
+                no_address: 'Sin información de destinatario, no se puede seleccionar',
+                upload_first: 'Primero cargue un archivo',
+                parsed_info: '✅ Archivo parseado: ',
+                rows_info: ' filas, ',
+                recipients_info: ' destinatarios',
+                no_data_parsed: 'No se encontraron datos válidos',
+                no_recipient: '📍 Se identificaron {count} direcciones de destinatario',
+                no_recipient_found: '⚠️ No se encontró información de destinatario',
+                waiting_upload: '⏳ Esperando conexión para subir datos...',
+                file_upload_error: '❌ Error al parsear: ',
+                invalid_scan: 'Ingrese un código de barras',
+                server_error: '❌ Servidor no conectado',
+                main_not_found: '❌ Código no encontrado: ',
+                main_completed: '⏳ Código {key} completado, no se puede agregar nuevamente',
+                main_locked: '❌ Código {key} bloqueado por otro dispositivo',
+                main_added: 'Agregar Envio: ',
+                main_patch: '✅ Código para reponer: ',
+                patch_remaining: ' ({remaining} cajas restantes)',
+                sub_invalid: '❌ Subcódigo inválido: ',
+                sub_not_belong: '❌ Subcódigo {code} no pertenece a la tarea actual',
+                sub_already_scanned: '⏳ Subcódigo {code} ya escaneada',
+                sub_scanned: 'Escaneado ',
+                sub_progress: ' ({scanned}/{total})',
+                address_selected: '✅ Se seleccionaron {count} direcciones, lista filtrada',
+                address_all: 'Cambiado a mostrar todos los datos',
+                no_delivery_address: '📭 Sin direcciones de entrega, haga clic para mostrar todos los datos',
+                current_all: 'Mostrando todos los datos',
+                confirmed_addresses: '✅ Se seleccionaron {count} direcciones, haga clic en "Cambiar" para modificar',
+                please_select_address: 'Seleccione al menos una dirección',
+                address_changed: 'Cambiado a mostrar todos los datos',
+                no_delivery_info: 'Sin información de destinatario, no se puede seleccionar',
+                confirm_release_all: '¿Liberar todos los códigos?\nSe liberarán: ',
+                box_singular: 'caja',
+                box_plural: 'cajas',
+                force_end_confirm: '¿Forzar finalización?\nRestan {remaining} subcódigos por escanear, la tarea se conservará para completar.',
+                confirm_ok: 'Aceptar',
+                confirm_cancel: 'Cancelar',
+                scan_placeholder: 'Escanear código de QR',
+            }
+        };
+
+        var currentLang = localStorage.getItem('pda_lang') || 'es';
+        var confirmCallback = null;
+
+        // ---- 工具函数 ----
+        function t(key, replacements) {
+            var text = LANG[currentLang][key] || key;
+            if (replacements) {
+                for (var k in replacements) {
+                    text = text.replace(new RegExp('\\{' + k + '\\}', 'g'), replacements[k]);
                 }
-                var panel = document.getElementById('debugPanel');
-                panel.scrollTop = panel.scrollHeight;
+            }
+            return text;
+        }
+
+        function translateBoxCount(count) {
+            if (currentLang === 'zh') {
+                return count + '箱';
+            } else {
+                return count === 1 ? '1 caja' : count + ' cajas';
+            }
+        }
+
+        // ---- 全局状态 ----
+        var ws = null;
+        var operator = '';
+        var vehicle = '';
+        var localMode = 'main';
+        var taskKeys = [];
+        var pendingKeys = [];
+        var state = { groups: [], selectedMainKeys: [], scanStatus: {} };
+        var allGroups = [];
+        var allRows = [];
+        var allRecipients = [];
+        var selectedAddresses = [];
+        var addressConfirmed = false;
+        var filterMode = 'all';
+        var globalStatsCollapsed = false;
+        var resetCollapsed = true;
+        var addressCollapsed = false;
+        var batches = [];
+        var reconnectTimer = null;
+        var toastTimer = null;
+        var isInitialized = false;
+
+        // ---- DOM 引用 ----
+        var scanInput = document.getElementById('scanInput');
+        var listBody = document.getElementById('listBody');
+        var modeDisplay = document.getElementById('modeDisplay');
+        var taskKeysDisplay = document.getElementById('taskKeysDisplay');
+        var pendingDisplay = document.getElementById('pendingDisplay');
+        var mySubProgress = document.getElementById('mySubProgress');
+        var globalMainCount = document.getElementById('globalMainCount');
+        var globalTotalBox = document.getElementById('globalTotalBox');
+        var globalScanned = document.getElementById('globalScanned');
+        var globalUnscanned = document.getElementById('globalUnscanned');
+        var operatorDisplay = document.getElementById('operatorDisplay');
+        var vehicleDisplay = document.getElementById('vehicleDisplay');
+        var connectionStatus = document.getElementById('connectionStatus');
+        var toastEl = document.getElementById('toast');
+        var globalStatsContent = document.getElementById('globalStatsContent');
+        var globalStatsIcon = document.getElementById('globalStatsIcon');
+        var resetCollapseBody = document.getElementById('resetCollapseBody');
+        var resetCollapseArrow = document.getElementById('resetCollapseArrow');
+        var addressBody = document.getElementById('addressBody');
+        var addressIcon = document.getElementById('addressIcon');
+        var addressGrid = document.getElementById('addressGrid');
+        var inlineSelectedCount = document.getElementById('inlineSelectedCount');
+        var inlineConfirmAddress = document.getElementById('inlineConfirmAddress');
+        var addressStatusMsg = document.getElementById('addressStatusMsg');
+        var fileInfo = document.getElementById('fileInfo');
+        var fileInput = document.getElementById('fileInput');
+
+        // ---- 调试面板 ----
+        function updateDebug(msg, type) {
+            type = type || 'info';
+            var content = document.getElementById('debugContent');
+            var span = document.createElement('div');
+            span.className = type;
+            span.textContent = msg;
+            content.appendChild(span);
+            while (content.children.length > 10) {
+                content.removeChild(content.firstChild);
+            }
+            var panel = document.getElementById('debugPanel');
+            panel.scrollTop = panel.scrollHeight;
+        }
+
+        // ---- 语言切换 ----
+        window.toggleLang = function() {
+            var next = currentLang === 'zh' ? 'es' : 'zh';
+            currentLang = next;
+            localStorage.setItem('pda_lang', next);
+            updateUI();
+            document.getElementById('langSwitch').textContent = next === 'zh' ? 'Español' : '中文';
+        };
+
+        function updateUI() {
+            document.getElementById('pageTitle').textContent = t('pageTitle');
+            document.getElementById('lblOperator').textContent = t('operator');
+            document.getElementById('lblVehicle').textContent = t('vehicle');
+            document.getElementById('lblMode').textContent = t('mode');
+            document.getElementById('lblTask').textContent = t('task');
+            document.getElementById('lblPending').textContent = t('pending');
+            document.getElementById('lblScanned').textContent = t('scanned');
+            document.getElementById('lblSelectedAddresses').textContent = t('selected_addresses');
+            document.getElementById('lblGlobalStats').textContent = t('global_stats');
+            document.getElementById('lblTotalMain').textContent = t('total_main');
+            document.getElementById('lblTotalBox').textContent = t('total_box');
+            document.getElementById('lblCompletedMain').textContent = t('completed_main');
+            document.getElementById('lblUnscannedSub').textContent = t('unscanned_sub');
+            document.getElementById('lblDeliveryAddress').textContent = t('delivery_address');
+            document.getElementById('lblSelectedCount').textContent = t('selected_count');
+            document.getElementById('lblAddrUnit').textContent = t('addr_unit');
+            document.getElementById('lblUploadPrompt').textContent = t('upload_prompt');
+            document.getElementById('lblNotUploaded').textContent = t('not_uploaded');
+            document.getElementById('lblAdvanced').textContent = t('advanced');
+            document.getElementById('lblNoData').textContent = t('no_data');
+            document.getElementById('modalTitle').textContent = t('auth_title');
+            document.getElementById('lblOperatorName').textContent = t('operator_name');
+            document.getElementById('lblVehiclePlate').textContent = t('vehicle_plate');
+            document.getElementById('operatorInput').placeholder = t('operator_name_placeholder');
+            document.getElementById('vehicleInput').placeholder = t('vehicle_plate_placeholder');
+            document.getElementById('changeIdentityBtn').textContent = t('change_identity');
+            document.getElementById('changeAddressBtn').textContent = t('change');
+            document.getElementById('inlineConfirmAddress').textContent = t('confirm_address');
+            document.getElementById('confirmOperatorBtn').textContent = t('confirm');
+            document.getElementById('cancelOperatorBtn').textContent = t('cancel');
+            document.getElementById('endMainBtn').textContent = t('end_main');
+            document.getElementById('forceEndBtn').textContent = t('force_end');
+            document.getElementById('resetBatchBtn').textContent = t('reset_my_keys');
+            document.getElementById('resetAllBtn').textContent = t('reset_all');
+            document.getElementById('exportTxtBtn').textContent = t('export_txt');
+            document.getElementById('exportExcelBtn').textContent = t('export_excel');
+            document.getElementById('scanInput').placeholder = t('scan_placeholder');
+            document.getElementById('lblNoData').textContent = t('no_data');
+            document.getElementById('confirmOkBtn').textContent = t('confirm_ok');
+            document.getElementById('confirmCancelBtn').textContent = t('confirm_cancel');
+            document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
+            updateConnectionStatus();
+            updateModeDisplay();
+            updateTaskDisplay();
+            updatePendingDisplay();
+            updateFileInfo();
+            updateFilterButtonText();
+            renderList();
+            updateStatusBar();
+            document.getElementById('langSwitch').textContent = currentLang === 'zh' ? 'Español' : '中文';
+        }
+
+        function updateConnectionStatus() {
+            var connected = connectionStatus.textContent.includes('已连接') || connectionStatus.textContent.includes('Conectado');
+            connectionStatus.textContent = connected ? t('connection') : t('disconnected');
+        }
+        function updateModeDisplay() {
+            modeDisplay.textContent = (localMode === 'main') ? t('main_mode') : t('sub_mode');
+        }
+        function updateTaskDisplay() {
+            taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : t('none');
+        }
+        function updatePendingDisplay() {
+            pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : t('none');
+        }
+        function updateFileInfo() {
+            if (fileInfo.textContent.includes('未上传') || fileInfo.textContent.includes('No subido')) {
+                fileInfo.innerHTML = '<span id="lblNotUploaded">' + t('not_uploaded') + '</span>';
+            }
+        }
+        function updateFilterButtonText() {
+            var btn = document.getElementById('toggleDoneBtn');
+            var mode = btn.getAttribute('data-filter-mode') || 'all';
+            btn.textContent = mode === 'all' ? t('show_all') : (mode === 'done' ? t('show_done') : t('show_undone'));
+        }
+
+        // ---- 设备ID ----
+        function getDeviceId() {
+            var id = localStorage.getItem('pda_deviceId');
+            if (!id) {
+                id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('pda_deviceId', id);
+            }
+            return id;
+        }
+        var deviceId = getDeviceId();
+
+        // ---- Toast ----
+        function showToast(msg, type, duration) {
+            type = type || 'info';
+            duration = duration || 3000;
+            if (toastTimer) clearTimeout(toastTimer);
+            toastEl.textContent = msg;
+            toastEl.className = 'toast';
+            if (type === 'success') toastEl.classList.add('success');
+            else if (type === 'error') toastEl.classList.add('error');
+            else if (type === 'warning') toastEl.classList.add('warning');
+            toastEl.classList.add('show');
+            toastTimer = setTimeout(function() {
+                toastEl.classList.remove('show');
+            }, duration);
+        }
+
+        // ---- 统计 ----
+        function getTaskStats() {
+            var total = 0,
+                scanned = 0;
+            for (var i = 0; i < taskKeys.length; i++) {
+                var key = taskKeys[i];
+                var g = state.groups.find(function(gr) { return gr.key === key; });
+                if (g) {
+                    total += g.items.length;
+                    for (var j = 0; j < g.items.length; j++) {
+                        if (state.scanStatus[g.items[j].code]) scanned++;
+                    }
+                }
+            }
+            return { total: total, scanned: scanned };
+        }
+
+        function getGlobalStats() {
+            var totalMain = state.groups.length;
+            var totalBoxes = 0,
+                completedMain = 0,
+                unscannedBoxes = 0;
+            for (var i = 0; i < state.groups.length; i++) {
+                var g = state.groups[i];
+                totalBoxes += g.items.length;
+                var allScanned = g.items.every(function(item) { return state.scanStatus[item.code]; });
+                if (allScanned) completedMain++;
+                for (var j = 0; j < g.items.length; j++) {
+                    if (!state.scanStatus[g.items[j].code]) unscannedBoxes++;
+                }
+            }
+            return { totalMain: totalMain, totalBoxes: totalBoxes, completedMain: completedMain, unscannedBoxes: unscannedBoxes };
+        }
+
+        function isMainCompleted(key) {
+            var g = state.groups.find(function(gr) { return gr.key === key; });
+            if (!g) return false;
+            return g.items.every(function(item) { return state.scanStatus[item.code]; });
+        }
+
+        function getFilteredMainKeys() {
+            if (selectedAddresses.length === 0) return state.groups.map(function(g) { return g.key; });
+            var filtered = [];
+            for (var i = 0; i < state.groups.length; i++) {
+                var g = state.groups[i];
+                if (g.recipients && g.recipients.some(function(r) { return selectedAddresses.includes(r); })) {
+                    filtered.push(g.key);
+                }
+            }
+            return filtered;
+        }
+
+        // ---- 更新状态栏 ----
+        function updateStatusBar() {
+            modeDisplay.textContent = localMode === 'main' ? t('main_mode') : t('sub_mode');
+            taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : t('none');
+            pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : t('none');
+            var stats = getTaskStats();
+            mySubProgress.textContent = stats.scanned + '/' + stats.total;
+
+            var global = getGlobalStats();
+            globalMainCount.textContent = global.totalMain;
+            globalTotalBox.textContent = global.totalBoxes;
+            globalScanned.textContent = global.completedMain + '/' + global.totalMain;
+            globalUnscanned.textContent = global.unscannedBoxes + '/' + global.totalBoxes;
+
+            if (globalStatsCollapsed) {
+                globalStatsContent.classList.add('collapsed');
+                globalStatsIcon.classList.add('collapsed');
+                globalStatsIcon.textContent = '▶';
+            } else {
+                globalStatsContent.classList.remove('collapsed');
+                globalStatsIcon.classList.remove('collapsed');
+                globalStatsIcon.textContent = '▼';
             }
 
-            // ========== 语言包（简版，只保留必要） ==========
-            var LANG = {
-                zh: {
-                    connection: '● 已连接',
-                    disconnected: '● 未连接',
-                    operator: '扫描员:',
-                    vehicle: '车牌:',
-                    change_identity: '🔄 更换身份',
-                    mode: '本机模式:',
-                    task: '当前任务:',
-                    pending: '待添加:',
-                    scanned: '已扫:',
-                    selected_addresses: '📍 已选地址：',
-                    change: '更改',
-                    global_stats: '📊 全局统计',
-                    total_main: '📦 总主码:',
-                    total_box: '📦 总箱数:',
-                    completed_main: '✅ 已扫主码:',
-                    unscanned_sub: '⬜ 未扫子码/箱数:',
-                    delivery_address: '📍 派送地址',
-                    selected_count: '已选',
-                    addr_unit: '个',
-                    confirm_address: '确认地址',
-                    upload_prompt: '点击上传出库表 (.xlsx/.xls)',
-                    not_uploaded: '未上传',
-                    end_main: '✅ 结束主码',
-                    force_end: '⏹ 强制结束',
-                    reset_my_keys: '🔄 重置我的主码',
-                    show_all: '显示全部',
-                    advanced: '⚙️ 高级操作',
-                    reset_all: '🔁 全部重置（清除所有数据）',
-                    no_data: '请上传文件或等待数据同步',
-                    export_txt: '📄 TXT',
-                    export_excel: '📊 Excel',
-                    auth_title: '🔐 身份验证',
-                    operator_name: '扫描员姓名',
-                    vehicle_plate: '车牌号',
-                    operator_name_placeholder: '请输入姓名',
-                    vehicle_plate_placeholder: '请输入车牌号',
-                    confirm: '确认',
-                    cancel: '取消',
-                    main_mode: '主码',
-                    sub_mode: '子码',
-                    none: '无',
-                    in_task: '任务中',
-                    pending_to_add: '待添加',
-                    completed: '完成',
-                    connected: '✅ 已连接到服务器',
-                    disconnected_msg: '⚠️ 连接断开，尝试重连...',
-                    identity_updated: '✅ 身份已更新',
-                    server_error: '❌ 服务器未连接',
-                },
-                es: {
-                    connection: '● Conectado',
-                    disconnected: '● Desconectado',
-                    operator: 'Operador:',
-                    vehicle: 'Matrícula:',
-                    change_identity: '🔄 Cambio operador',
-                    mode: 'Modo local:',
-                    task: 'Tarea actual:',
-                    pending: 'Pendientes:',
-                    scanned: 'Escaneado:',
-                    selected_addresses: '📍 Direcciones seleccionadas:',
-                    change: 'Cambiar',
-                    global_stats: '📊 Estadísticas globales',
-                    total_main: '📦 Total Códigos:',
-                    total_box: '📦 Total Cajas:',
-                    completed_main: '✅ Envio escaneados:',
-                    unscanned_sub: '⬜ Subcajas no escaneadas:',
-                    delivery_address: '📍 Dirección de entrega',
-                    selected_count: 'Seleccionados',
-                    addr_unit: '',
-                    confirm_address: 'Confirmar dirección',
-                    upload_prompt: 'Haga clic para cargar tabla de salida (.xlsx/.xls)',
-                    not_uploaded: 'No subido',
-                    end_main: '✅ Finalizar código',
-                    force_end: '⏹ Forzar finalización',
-                    reset_my_keys: '🔄 Restablecer mis códigos',
-                    show_all: 'Mostrar todo',
-                    advanced: '⚙️ Operaciones avanzadas',
-                    reset_all: '🔁 Restablecer todo (borrar todos los datos)',
-                    no_data: 'Cargue un archivo o espere sincronización',
-                    export_txt: '📄 TXT',
-                    export_excel: '📊 Excel',
-                    auth_title: '🔐 Autenticación',
-                    operator_name: 'Nombre del operador',
-                    vehicle_plate: 'Matrícula',
-                    operator_name_placeholder: 'Nombre del operador',
-                    vehicle_plate_placeholder: 'Matrícula',
-                    confirm: 'Confirmar',
-                    cancel: 'Cancelar',
-                    main_mode: 'Código principal',
-                    sub_mode: 'Subcódigo',
-                    none: 'No',
-                    in_task: 'En tarea',
-                    pending_to_add: 'Pendiente',
-                    completed: 'Completado',
-                    connected: '✅ Conectado al servidor',
-                    disconnected_msg: '⚠️ Desconectado, reconectando...',
-                    identity_updated: '✅ Identidad actualizada',
-                    server_error: '❌ Servidor no conectado',
-                }
-            };
-            var currentLang = localStorage.getItem('pda_lang') || 'es';
-
-            function t(key) {
-                return LANG[currentLang][key] || key;
+            if (resetCollapsed) {
+                resetCollapseBody.classList.remove('open');
+                resetCollapseArrow.classList.remove('open');
+                resetCollapseArrow.textContent = '▶';
+            } else {
+                resetCollapseBody.classList.add('open');
+                resetCollapseArrow.classList.add('open');
+                resetCollapseArrow.textContent = '▼';
             }
 
-            function translateBoxCount(count) {
-                if (currentLang === 'zh') {
-                    return count + '箱';
-                } else {
-                    return count === 1 ? '1 caja' : count + ' cajas';
-                }
+            if (addressCollapsed) {
+                addressBody.classList.add('collapsed');
+                addressIcon.classList.add('collapsed');
+                addressIcon.textContent = '▶';
+            } else {
+                addressBody.classList.remove('collapsed');
+                addressIcon.classList.remove('collapsed');
+                addressIcon.textContent = '▼';
             }
 
-            // ---- 语言切换 ----
-            function setLang(lang) {
-                if (!LANG[lang]) return;
-                currentLang = lang;
-                localStorage.setItem('pda_lang', lang);
-                updateUI();
-                document.getElementById('langSwitch').textContent = lang === 'zh' ? 'Español' : '中文';
+            if (selectedAddresses.length > 0) {
+                document.getElementById('selectedAddressesDisplay').style.display = 'flex';
+                document.getElementById('addrTags').innerHTML = selectedAddresses.map(function(a) { return '<span class="addr-tag">' + a + '</span>'; }).join('');
+            } else {
+                document.getElementById('selectedAddressesDisplay').style.display = 'none';
             }
 
-            function updateUI() {
-                var elements = document.querySelectorAll('[data-i18n]');
-                for (var i = 0; i < elements.length; i++) {
-                    var el = elements[i];
-                    el.textContent = t(el.getAttribute('data-i18n'));
-                }
-                document.getElementById('pageTitle').textContent = t('pageTitle') || '📦 出库核对';
-                document.getElementById('lblOperator').textContent = t('operator');
-                document.getElementById('lblVehicle').textContent = t('vehicle');
-                document.getElementById('lblMode').textContent = t('mode');
-                document.getElementById('lblTask').textContent = t('task');
-                document.getElementById('lblPending').textContent = t('pending');
-                document.getElementById('lblScanned').textContent = t('scanned');
-                document.getElementById('lblSelectedAddresses').textContent = t('selected_addresses');
-                document.getElementById('lblGlobalStats').textContent = t('global_stats');
-                document.getElementById('lblTotalMain').textContent = t('total_main');
-                document.getElementById('lblTotalBox').textContent = t('total_box');
-                document.getElementById('lblCompletedMain').textContent = t('completed_main');
-                document.getElementById('lblUnscannedSub').textContent = t('unscanned_sub');
-                document.getElementById('lblDeliveryAddress').textContent = t('delivery_address');
-                document.getElementById('lblSelectedCount').textContent = t('selected_count');
-                document.getElementById('lblAddrUnit').textContent = t('addr_unit');
-                document.getElementById('lblUploadPrompt').textContent = t('upload_prompt');
-                document.getElementById('lblNotUploaded').textContent = t('not_uploaded');
-                document.getElementById('lblAdvanced').textContent = t('advanced');
-                document.getElementById('lblNoData').textContent = t('no_data');
-                document.getElementById('modalTitle').textContent = t('auth_title');
-                document.getElementById('lblOperatorName').textContent = t('operator_name');
-                document.getElementById('lblVehiclePlate').textContent = t('vehicle_plate');
-                document.getElementById('operatorInput').placeholder = t('operator_name_placeholder');
-                document.getElementById('vehicleInput').placeholder = t('vehicle_plate_placeholder');
-                document.getElementById('changeIdentityBtn').textContent = t('change_identity');
-                document.getElementById('changeAddressBtn').textContent = t('change');
-                document.getElementById('inlineConfirmAddress').textContent = t('confirm_address');
-                document.getElementById('confirmOperatorBtn').textContent = t('confirm');
-                document.getElementById('cancelOperatorBtn').textContent = t('cancel');
-                document.getElementById('endMainBtn').textContent = t('end_main');
-                document.getElementById('forceEndBtn').textContent = t('force_end');
-                document.getElementById('resetBatchBtn').textContent = t('reset_my_keys');
-                document.getElementById('resetAllBtn').textContent = t('reset_all');
-                document.getElementById('exportTxtBtn').textContent = t('export_txt');
-                document.getElementById('exportExcelBtn').textContent = t('export_excel');
-                document.getElementById('scanInput').placeholder = t('scan_placeholder') || '扫描条码...';
-                document.getElementById('lblNoData').textContent = t('no_data');
-                document.getElementById('confirmOkBtn').textContent = t('confirm') || '确定';
-                document.getElementById('confirmCancelBtn').textContent = t('cancel') || '取消';
-                document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
-                updateConnectionStatus();
-                updateModeDisplay();
-                updateTaskDisplay();
-                updatePendingDisplay();
-                updateFileInfo();
-                updateFilterButtonText();
-                renderList();
+            saveLocalState();
+
+            if (localMode === 'sub' && taskKeys.length > 0 && stats.total > 0 && stats.scanned === stats.total) {
+                showToast(t('scanned_complete'), 'success', 3000);
+                localMode = 'main';
+                taskKeys = [];
                 updateStatusBar();
-                document.getElementById('langSwitch').textContent = currentLang === 'zh' ? 'Español' : '中文';
+                renderList();
             }
+        }
 
-            function updateConnectionStatus() {
-                var status = document.getElementById('connectionStatus');
-                var connected = status.textContent.includes('已连接') || status.textContent.includes('Conectado');
-                status.textContent = connected ? t('connection') : t('disconnected');
+        // ---- WebSocket ----
+        function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+            try {
+                var protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                var host = window.location.host;
+                var WS_URL = protocol + host;
+                updateDebug('🔌 正在连接 WebSocket: ' + WS_URL, 'info');
+                ws = new WebSocket(WS_URL);
+                ws.onopen = function() {
+                    connectionStatus.textContent = t('connection');
+                    connectionStatus.style.color = '#16a34a';
+                    updateDebug('✅ WebSocket 连接成功！', 'success');
+                    showToast(t('connected'), 'success', 2000);
+                    if (allGroups.length > 0 && allRecipients.length > 0) {
+                        ws.send(JSON.stringify({ type: 'init', groups: allGroups, recipients: allRecipients, deviceId: deviceId }));
+                    }
+                };
+                ws.onmessage = function(event) {
+                    try {
+                        var data = JSON.parse(event.data);
+                        console.log('📨 收到服务器消息:', data);
+                        if (data.type === 'state') {
+                            state = data.state;
+                            taskKeys = taskKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
+                            pendingKeys = pendingKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
+                            if (localMode === 'sub' && taskKeys.length === 0) {
+                                localMode = 'main';
+                                showToast(t('task_invalid'), 'warning', 2000);
+                            }
+                            renderList();
+                            updateStatusBar();
+                        } else if (data.type === 'addresses') {
+                            allRecipients = data.recipients || [];
+                            if (allRows.length > 0) {
+                                var readonly = false;
+                                if (selectedAddresses.length > 0) {
+                                    var valid = selectedAddresses.every(function(a) { return allRecipients.includes(a); });
+                                    if (valid) readonly = true;
+                                    else selectedAddresses = [];
+                                }
+                                renderAddressSelector(allRecipients, allRows, readonly);
+                            } else {
+                                renderAddressSelector(allRecipients, [], false);
+                            }
+                        } else if (data.type === 'success') {
+                            var msg = data.message;
+                            console.log('🔍 成功消息内容:', msg);
+                            // 处理补扫
+                            var patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
+                            if (patchMatch) {
+                                var patchKey = patchMatch[1];
+                                var remaining = parseInt(patchMatch[2]);
+                                showToast(t('patch_scan') + patchKey + ' (剩余 ' + remaining + ' 箱未扫)', 'info', 3000);
+                                if (!pendingKeys.includes(patchKey)) {
+                                    pendingKeys.push(patchKey);
+                                    renderList();
+                                    updateStatusBar();
+                                }
+                                scanInput.value = '';
+                                scanInput.focus();
+                                return;
+                            }
+                            // 主码添加
+                            var mainMatch = msg.match(/已添加主码:\s*([^\s]+)/);
+                            if (mainMatch) {
+                                var key = mainMatch[1];
+                                if (isMainCompleted(key)) {
+                                    showToast(t('main_completed', { key: key }), 'warning', 2000);
+                                    scanInput.value = '';
+                                    scanInput.focus();
+                                    return;
+                                }
+                                var filtered = getFilteredMainKeys();
+                                if (filtered.length > 0 && !filtered.includes(key)) {
+                                    showToast(t('not_belong', { key: key }), 'warning', 2000);
+                                    scanInput.value = '';
+                                    scanInput.focus();
+                                    return;
+                                }
+                                if (!pendingKeys.includes(key)) {
+                                    pendingKeys.push(key);
+                                    var group = state.groups.find(function(g) { return g.key === key; });
+                                    var boxText = group ? translateBoxCount(group.items.length) : '';
+                                    showToast(t('main_added') + key + (boxText ? ' (' + boxText + ')' : ''), 'success', 2000);
+                                    renderList();
+                                    updateStatusBar();
+                                }
+                                scanInput.value = '';
+                                scanInput.focus();
+                                return;
+                            }
+                            // 子码扫描
+                            var subMatch = msg.match(/✅ 已扫描:\s*([^\s]+)\s*\((\d+)\/(\d+)\)/);
+                            if (subMatch) {
+                                var code = subMatch[1];
+                                var scanned = parseInt(subMatch[2]);
+                                var total = parseInt(subMatch[3]);
+                                for (var i = 0; i < state.groups.length; i++) {
+                                    var g = state.groups[i];
+                                    for (var j = 0; j < g.items.length; j++) {
+                                        if (g.items[j].code === code) {
+                                            state.scanStatus[code] = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                renderList();
+                                updateStatusBar();
+                                showToast(t('sub_scanned') + code + ' (' + scanned + '/' + total + ')', 'success', 2000);
+                                scanInput.value = '';
+                                scanInput.focus();
+                                return;
+                            }
+                            showToast(msg, 'success', 2000);
+                            scanInput.value = '';
+                            scanInput.focus();
+                        } else if (data.type === 'error') {
+                            var errMsg = data.message;
+                            if (currentLang !== 'zh') {
+                                errMsg = errMsg.replace(/❌ 主码 /g, '❌ Código ');
+                                errMsg = errMsg.replace(/已被其他设备锁定，不可重复扫描/g, 'bloqueado por otro dispositivo, no se puede repetir');
+                                errMsg = errMsg.replace(/❌ 无效子码: /g, '❌ Subcódigo inválido: ');
+                                errMsg = errMsg.replace(/⏳ 子码 /g, '⏳ Subcódigo ');
+                                errMsg = errMsg.replace(/已扫描过/g, 'ya escaneada');
+                                errMsg = errMsg.replace(/不属于当前任务主码/g, 'no pertenece al código actual');
+                                errMsg = errMsg.replace(/⏳ 主码 /g, '⏳ Código ');
+                                errMsg = errMsg.replace(/已完成，无需再次添加/g, 'completado, no se puede agregar nuevamente');
+                                errMsg = errMsg.replace(/❌ 未找到主码: /g, '❌ Código no encontrado: ');
+                                errMsg = errMsg.replace(/❌ 无效主码: /g, '❌ Código inválido: ');
+                                errMsg = errMsg.replace(/主码/g, 'código');
+                            }
+                            showToast(errMsg, 'error', 3000);
+                            scanInput.value = '';
+                            scanInput.focus();
+                        }
+                    } catch (err) {
+                        console.error('❌ 解析消息失败:', err);
+                    }
+                };
+                ws.onclose = function(event) {
+                    connectionStatus.textContent = t('disconnected');
+                    connectionStatus.style.color = '#dc2626';
+                    var reason = event.reason || '无';
+                    updateDebug('⚠️ 连接关闭，代码: ' + event.code + '，原因: ' + reason, 'error');
+                    showToast(t('disconnected_msg'), 'error');
+                    if (reconnectTimer) clearTimeout(reconnectTimer);
+                    reconnectTimer = setTimeout(connectWebSocket, 3000);
+                };
+                ws.onerror = function(err) {
+                    updateDebug('❌ WebSocket 错误: ' + (err.message || '未知错误'), 'error');
+                    console.error('❌ WebSocket错误:', err);
+                    ws.close();
+                };
+            } catch (err) {
+                updateDebug('❌ 连接失败: ' + err.message, 'error');
+                console.error('❌ 连接失败:', err);
+                setTimeout(connectWebSocket, 3000);
             }
-            function updateModeDisplay() {
-                var el = document.getElementById('modeDisplay');
-                el.textContent = el.textContent.includes('主码') || el.textContent.includes('Código principal') ? t('main_mode') : t('sub_mode');
+        }
+
+        window.forceConnect = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                updateDebug('⚠️ 已连接，无需重复操作', 'info');
+                return;
             }
-            function updateTaskDisplay() {
-                var el = document.getElementById('taskKeysDisplay');
-                if (el.textContent === '无' || el.textContent === 'No') el.textContent = t('none');
+            if (!operator) {
+                operator = 'PDA';
+                vehicle = 'DEV';
+                localStorage.setItem('operator', operator);
+                localStorage.setItem('vehicle', vehicle);
+                operatorDisplay.textContent = operator;
+                vehicleDisplay.textContent = vehicle;
+                updateDebug('📝 已填入默认身份: PDA / DEV', 'info');
             }
-            function updatePendingDisplay() {
-                var el = document.getElementById('pendingDisplay');
-                if (el.textContent === '无' || el.textContent === 'No') el.textContent = t('none');
+            if (!isInitialized) {
+                isInitialized = true;
             }
-            function updateFileInfo() {
-                var el = document.getElementById('fileInfo');
-                if (el.textContent.includes('未上传') || el.textContent.includes('No subido')) {
-                    el.textContent = t('not_uploaded');
+            connectWebSocket();
+        };
+
+        // ---- 提取码 ----
+        function extractCodeFromInput(input) {
+            if (!input) return input;
+            var trimmed = input.trim();
+            try {
+                var obj = JSON.parse(trimmed);
+                if (obj && typeof obj === 'object' && obj.id) {
+                    return obj.id;
                 }
+                return trimmed;
+            } catch (e) {
+                return trimmed;
             }
-            function updateFilterButtonText() {
-                var btn = document.getElementById('toggleDoneBtn');
-                var mode = btn.getAttribute('data-filter-mode') || 'all';
-                btn.textContent = mode === 'all' ? t('show_all') : (mode === 'done' ? '📂 ' + t('show_done') : '📂 ' + t('show_undone'));
-            }
+        }
 
-            // ---- 强制连接（暴露全局） ----
-            window.forceConnect = function() {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    updateDebug('⚠️ 已连接，无需重复操作', 'info');
+        // ---- 扫描 ----
+        window.handleScan = function() {
+            var code = scanInput.value.trim();
+            if (!code) {
+                showToast(t('invalid_scan'), 'warning');
+                return;
+            }
+            var extracted = extractCodeFromInput(code);
+            console.log('📥 原始输入:', code, '→ 提取后:', extracted);
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showToast(t('server_error'), 'error');
+                return;
+            }
+            var trimmed = extracted;
+            if (localMode === 'main') {
+                if (pendingKeys.includes(trimmed)) {
+                    showToast(t('already_added', { key: trimmed }), 'warning', 2000);
+                    scanInput.value = '';
+                    scanInput.focus();
                     return;
                 }
-                if (!operator) {
-                    operator = 'PDA';
-                    vehicle = 'DEV';
-                    localStorage.setItem('operator', operator);
-                    localStorage.setItem('vehicle', vehicle);
-                    document.getElementById('operatorDisplay').textContent = operator;
-                    document.getElementById('vehicleDisplay').textContent = vehicle;
-                    updateDebug('📝 已填入默认身份: PDA / DEV', 'info');
+                var filtered = getFilteredMainKeys();
+                if (filtered.length > 0 && !filtered.includes(trimmed)) {
+                    showToast(t('not_belong', { key: trimmed }), 'warning', 3000);
+                    scanInput.value = '';
+                    scanInput.focus();
+                    return;
                 }
-                if (!isInitialized) {
-                    isInitialized = true;
-                }
-                connectWebSocket();
-            };
-
-            // ---- 设备ID ----
-            function getDeviceId() {
-                var id = localStorage.getItem('pda_deviceId');
-                if (!id) {
-                    id = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                    localStorage.setItem('pda_deviceId', id);
-                }
-                return id;
-            }
-            var deviceId = getDeviceId();
-
-            // ---- 状态 ----
-            var ws = null;
-            var operator = '';
-            var vehicle = '';
-            var localMode = 'main';
-            var taskKeys = [];
-            var pendingKeys = [];
-            var state = { groups: [], selectedMainKeys: [], scanStatus: {} };
-            var allGroups = [];
-            var allRows = [];
-            var allRecipients = [];
-            var selectedAddresses = [];
-            var addressConfirmed = false;
-            var filterMode = 'all';
-            var globalStatsCollapsed = false;
-            var resetCollapsed = true;
-            var addressCollapsed = false;
-            var batches = [];
-
-            var reconnectTimer = null;
-            var toastTimer = null;
-            var WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
-            var isReauth = false;
-            var isInitialized = false;
-
-            // ---- DOM refs ----
-            var scanInput = document.getElementById('scanInput');
-            var listBody = document.getElementById('listBody');
-            var modeDisplay = document.getElementById('modeDisplay');
-            var taskKeysDisplay = document.getElementById('taskKeysDisplay');
-            var pendingDisplay = document.getElementById('pendingDisplay');
-            var mySubProgress = document.getElementById('mySubProgress');
-            var globalMainCount = document.getElementById('globalMainCount');
-            var globalTotalBox = document.getElementById('globalTotalBox');
-            var globalScanned = document.getElementById('globalScanned');
-            var globalUnscanned = document.getElementById('globalUnscanned');
-            var operatorDisplay = document.getElementById('operatorDisplay');
-            var vehicleDisplay = document.getElementById('vehicleDisplay');
-            var connectionStatus = document.getElementById('connectionStatus');
-            var toastEl = document.getElementById('toast');
-            var globalStatsContent = document.getElementById('globalStatsContent');
-            var globalStatsIcon = document.getElementById('globalStatsIcon');
-            var resetCollapseBody = document.getElementById('resetCollapseBody');
-            var resetCollapseArrow = document.getElementById('resetCollapseArrow');
-            var addressBody = document.getElementById('addressBody');
-            var addressIcon = document.getElementById('addressIcon');
-            var addressGrid = document.getElementById('addressGrid');
-            var inlineSelectedCount = document.getElementById('inlineSelectedCount');
-            var inlineConfirmAddress = document.getElementById('inlineConfirmAddress');
-            var addressStatusMsg = document.getElementById('addressStatusMsg');
-            var fileInfo = document.getElementById('fileInfo');
-            var fileInput = document.getElementById('fileInput');
-
-            // ---- Toast ----
-            function showToast(msg, type, duration) {
-                type = type || 'info';
-                duration = duration || 3000;
-                if (toastTimer) clearTimeout(toastTimer);
-                toastEl.textContent = msg;
-                toastEl.className = 'toast';
-                if (type === 'success') toastEl.classList.add('success');
-                else if (type === 'error') toastEl.classList.add('error');
-                else if (type === 'warning') toastEl.classList.add('warning');
-                toastEl.classList.add('show');
-                toastTimer = setTimeout(function() {
-                    toastEl.classList.remove('show');
-                }, duration);
-            }
-
-            // ---- 统计 ----
-            function getTaskStats() {
-                var total = 0,
-                    scanned = 0;
+                ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'main', deviceId: deviceId }));
+            } else {
+                var belongs = false;
                 for (var i = 0; i < taskKeys.length; i++) {
                     var key = taskKeys[i];
                     var g = state.groups.find(function(gr) { return gr.key === key; });
                     if (g) {
-                        total += g.items.length;
-                        for (var j = 0; j < g.items.length; j++) {
-                            if (state.scanStatus[g.items[j].code]) scanned++;
+                        if (g.items.find(function(item) { return item.code === trimmed; })) { belongs = true; break; }
+                        var parts = trimmed.split('/');
+                        if (parts.length === 2 && parts[0] === key) {
+                            var idx = parseInt(parts[1]);
+                            if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) { belongs = true; break; }
                         }
                     }
                 }
-                return { total: total, scanned: scanned };
-            }
-
-            function getGlobalStats() {
-                var totalMain = state.groups.length;
-                var totalBoxes = 0,
-                    completedMain = 0,
-                    unscannedBoxes = 0;
-                for (var i = 0; i < state.groups.length; i++) {
-                    var g = state.groups[i];
-                    totalBoxes += g.items.length;
-                    var allScanned = g.items.every(function(item) { return state.scanStatus[item.code]; });
-                    if (allScanned) completedMain++;
-                    for (var j = 0; j < g.items.length; j++) {
-                        if (!state.scanStatus[g.items[j].code]) unscannedBoxes++;
-                    }
-                }
-                return { totalMain: totalMain, totalBoxes: totalBoxes, completedMain: completedMain, unscannedBoxes: unscannedBoxes };
-            }
-
-            function isMainCompleted(key) {
-                var g = state.groups.find(function(gr) { return gr.key === key; });
-                if (!g) return false;
-                return g.items.every(function(item) { return state.scanStatus[item.code]; });
-            }
-
-            function getFilteredMainKeys() {
-                if (selectedAddresses.length === 0) return state.groups.map(function(g) { return g.key; });
-                var filtered = [];
-                for (var i = 0; i < state.groups.length; i++) {
-                    var g = state.groups[i];
-                    if (g.recipients && g.recipients.some(function(r) { return selectedAddresses.includes(r); })) {
-                        filtered.push(g.key);
-                    }
-                }
-                return filtered;
-            }
-
-            // ---- 更新状态栏 ----
-            function updateStatusBar() {
-                modeDisplay.textContent = localMode === 'main' ? t('main_mode') : t('sub_mode');
-                taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : t('none');
-                pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : t('none');
-                var stats = getTaskStats();
-                mySubProgress.textContent = stats.scanned + '/' + stats.total;
-
-                var global = getGlobalStats();
-                globalMainCount.textContent = global.totalMain;
-                globalTotalBox.textContent = global.totalBoxes;
-                globalScanned.textContent = global.completedMain + '/' + global.totalMain;
-                globalUnscanned.textContent = global.unscannedBoxes + '/' + global.totalBoxes;
-
-                if (globalStatsCollapsed) {
-                    globalStatsContent.classList.add('collapsed');
-                    globalStatsIcon.classList.add('collapsed');
-                    globalStatsIcon.textContent = '▶';
-                } else {
-                    globalStatsContent.classList.remove('collapsed');
-                    globalStatsIcon.classList.remove('collapsed');
-                    globalStatsIcon.textContent = '▼';
-                }
-
-                if (resetCollapsed) {
-                    resetCollapseBody.classList.remove('open');
-                    resetCollapseArrow.classList.remove('open');
-                    resetCollapseArrow.textContent = '▶';
-                } else {
-                    resetCollapseBody.classList.add('open');
-                    resetCollapseArrow.classList.add('open');
-                    resetCollapseArrow.textContent = '▼';
-                }
-
-                if (addressCollapsed) {
-                    addressBody.classList.add('collapsed');
-                    addressIcon.classList.add('collapsed');
-                    addressIcon.textContent = '▶';
-                } else {
-                    addressBody.classList.remove('collapsed');
-                    addressIcon.classList.remove('collapsed');
-                    addressIcon.textContent = '▼';
-                }
-
-                if (selectedAddresses.length > 0) {
-                    document.getElementById('selectedAddressesDisplay').style.display = 'flex';
-                    document.getElementById('addrTags').innerHTML = selectedAddresses.map(function(a) { return '<span class="addr-tag">' + a + '</span>'; }).join('');
-                } else {
-                    document.getElementById('selectedAddressesDisplay').style.display = 'none';
-                }
-
-                saveLocalState();
-
-                if (localMode === 'sub' && taskKeys.length > 0 && stats.total > 0 && stats.scanned === stats.total) {
-                    showToast('🎉 当前任务所有子码扫描完成！自动切回主码模式', 'success', 3000);
-                    localMode = 'main';
-                    taskKeys = [];
-                    updateStatusBar();
-                    renderList();
-                }
-            }
-
-            // ---- WebSocket（带调试） ----
-            function connectWebSocket() {
-                if (ws && ws.readyState === WebSocket.OPEN) return;
-                try {
-                    updateDebug('🔌 正在连接 WebSocket: ' + WS_URL, 'info');
-                    ws = new WebSocket(WS_URL);
-                    ws.onopen = function() {
-                        connectionStatus.textContent = t('connection');
-                        connectionStatus.style.color = '#16a34a';
-                        updateDebug('✅ WebSocket 连接成功！', 'success');
-                        showToast(t('connected'), 'success', 2000);
-                        if (allGroups.length > 0 && allRecipients.length > 0) {
-                            ws.send(JSON.stringify({ type: 'init', groups: allGroups, recipients: allRecipients, deviceId: deviceId }));
-                        }
-                    };
-                    ws.onmessage = function(event) {
-                        try {
-                            var data = JSON.parse(event.data);
-                            console.log('📨 收到服务器消息:', data);
-                            if (data.type === 'state') {
-                                state = data.state;
-                                taskKeys = taskKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
-                                pendingKeys = pendingKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
-                                if (localMode === 'sub' && taskKeys.length === 0) {
-                                    localMode = 'main';
-                                    showToast('🔄 您的任务已失效，已切回主码模式', 'warning', 2000);
-                                }
-                                renderList();
-                                updateStatusBar();
-                            } else if (data.type === 'addresses') {
-                                allRecipients = data.recipients || [];
-                                if (allRows.length > 0) {
-                                    var readonly = false;
-                                    if (selectedAddresses.length > 0) {
-                                        var valid = selectedAddresses.every(function(a) { return allRecipients.includes(a); });
-                                        if (valid) readonly = true;
-                                        else selectedAddresses = [];
-                                    }
-                                    renderAddressSelector(allRecipients, allRows, readonly);
-                                } else {
-                                    renderAddressSelector(allRecipients, [], false);
-                                }
-                            } else if (data.type === 'success') {
-                                var msg = data.message;
-                                console.log('🔍 成功消息内容:', msg);
-                                // 简单处理：只显示 toast
-                                showToast(msg, 'success', 2000);
-                                // 如果是主码添加，需要更新 pendingKeys
-                                var mainMatch = msg.match(/已添加主码:\s*([^\s]+)/);
-                                if (mainMatch) {
-                                    var key = mainMatch[1];
-                                    if (!isMainCompleted(key) && !pendingKeys.includes(key)) {
-                                        pendingKeys.push(key);
-                                        renderList();
-                                        updateStatusBar();
-                                    }
-                                }
-                                scanInput.value = '';
-                                scanInput.focus();
-                            } else if (data.type === 'error') {
-                                showToast(data.message, 'error', 3000);
-                                scanInput.value = '';
-                                scanInput.focus();
-                            }
-                        } catch (err) {
-                            console.error('❌ 解析消息失败:', err);
-                        }
-                    };
-                    ws.onclose = function(event) {
-                        connectionStatus.textContent = t('disconnected');
-                        connectionStatus.style.color = '#dc2626';
-                        var reason = event.reason || '无';
-                        updateDebug('⚠️ 连接关闭，代码: ' + event.code + '，原因: ' + reason, 'error');
-                        showToast(t('disconnected_msg'), 'error');
-                        if (reconnectTimer) clearTimeout(reconnectTimer);
-                        reconnectTimer = setTimeout(connectWebSocket, 3000);
-                    };
-                    ws.onerror = function(err) {
-                        updateDebug('❌ WebSocket 错误: ' + (err.message || '未知错误'), 'error');
-                        console.error('❌ WebSocket错误:', err);
-                        ws.close();
-                    };
-                } catch (err) {
-                    updateDebug('❌ 连接失败: ' + err.message, 'error');
-                    console.error('❌ 连接失败:', err);
-                    setTimeout(connectWebSocket, 3000);
-                }
-            }
-
-            // ---- JSON 解析 ----
-            function extractCodeFromInput(input) {
-                if (!input) return input;
-                var trimmed = input.trim();
-                try {
-                    var obj = JSON.parse(trimmed);
-                    if (obj && typeof obj === 'object' && obj.id) {
-                        return obj.id;
-                    }
-                    return trimmed;
-                } catch (e) {
-                    return trimmed;
-                }
-            }
-
-            // ---- 发送扫描 ----
-            function handleScan() {
-                var code = scanInput.value.trim();
-                if (!code) {
-                    showToast('请输入条码', 'warning');
+                if (!belongs) {
+                    showToast(t('sub_not_belong', { code: trimmed }), 'error', 3000);
+                    scanInput.value = '';
+                    scanInput.focus();
                     return;
                 }
-                var extracted = extractCodeFromInput(code);
-                console.log('📥 原始输入:', code, '→ 提取后:', extracted);
-                if (!ws || ws.readyState !== WebSocket.OPEN) {
-                    showToast(t('server_error'), 'error');
-                    return;
-                }
-                var trimmed = extracted;
-                if (localMode === 'main') {
-                    if (pendingKeys.includes(trimmed)) {
-                        showToast('⏳ 主码 ' + trimmed + ' 已在待添加列表中', 'warning', 2000);
-                        scanInput.value = '';
-                        scanInput.focus();
-                        return;
-                    }
-                    var filtered = getFilteredMainKeys();
-                    if (filtered.length > 0 && !filtered.includes(trimmed)) {
-                        showToast('⚠️ 主码 ' + trimmed + ' 不属于当前选中的地址', 'warning', 3000);
-                        scanInput.value = '';
-                        scanInput.focus();
-                        return;
-                    }
-                    ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'main', deviceId: deviceId }));
-                } else {
-                    var belongs = false;
-                    for (var i = 0; i < taskKeys.length; i++) {
-                        var key = taskKeys[i];
-                        var g = state.groups.find(function(gr) { return gr.key === key; });
-                        if (g) {
-                            if (g.items.find(function(item) { return item.code === trimmed; })) { belongs = true; break; }
-                            var parts = trimmed.split('/');
-                            if (parts.length === 2 && parts[0] === key) {
-                                var idx = parseInt(parts[1]);
-                                if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) { belongs = true; break; }
-                            }
-                        }
-                    }
-                    if (!belongs) {
-                        showToast('❌ 子码 ' + trimmed + ' 不属于当前任务主码', 'error', 3000);
-                        scanInput.value = '';
-                        scanInput.focus();
-                        return;
-                    }
-                    ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'sub', deviceId: deviceId }));
-                }
+                ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'sub', deviceId: deviceId }));
             }
+        };
 
-            // ---- 结束主码 ----
-            function switchToSubMode() {
-                if (pendingKeys.length === 0) {
-                    showToast('您还没有添加任何主码', 'warning');
-                    return;
-                }
-                if (localMode === 'sub') {
-                    showToast('已经是子码模式', 'warning');
-                    return;
-                }
-                var batchName = 'Tarima' + (batches.length + 1);
-                batches.push({
-                    name: batchName,
-                    keys: pendingKeys.slice(),
-                    operator: operator || '',
-                    vehicle: vehicle || ''
-                });
-                showToast('📦 已记录批次: ' + batchName + ' (' + pendingKeys.length + ' 个主码)', 'success', 3000);
-                taskKeys = pendingKeys.slice();
-                pendingKeys = [];
-                localMode = 'sub';
-                updateStatusBar();
-                renderList();
-                showToast('🔁 已切换至子码模式，当前任务: ' + taskKeys.join(', '), 'success', 2000);
-                scanInput.focus();
-                saveLocalState();
+        // ---- 结束主码 ----
+        window.switchToSubMode = function() {
+            if (pendingKeys.length === 0) {
+                showToast(t('no_pending'), 'warning');
+                return;
             }
+            if (localMode === 'sub') {
+                showToast(t('already_sub'), 'warning');
+                return;
+            }
+            var batchName = 'Tarima' + (batches.length + 1);
+            batches.push({
+                name: batchName,
+                keys: pendingKeys.slice(),
+                operator: operator || '',
+                vehicle: vehicle || ''
+            });
+            showToast(t('batch_recorded') + batchName + ' (' + pendingKeys.length + ' 个主码)', 'success', 3000);
+            taskKeys = pendingKeys.slice();
+            pendingKeys = [];
+            localMode = 'sub';
+            updateStatusBar();
+            renderList();
+            showToast(t('switch_sub') + taskKeys.join(', '), 'success', 2000);
+            scanInput.focus();
+            saveLocalState();
+        };
 
-            // ---- 强制结束 ----
-            function forceEnd() {
-                if (localMode === 'main') {
-                    showToast('当前已是主码模式', 'warning');
-                    return;
-                }
-                if (taskKeys.length === 0) {
-                    showToast('没有任务需要结束', 'warning');
-                    return;
-                }
-                var stats = getTaskStats();
-                if (stats.scanned === stats.total) {
-                    showToast('任务已全部完成，无需强制结束', 'info', 2000);
-                    return;
-                }
-                showConfirm('确定强制结束吗？\n剩余 ' + (stats.total - stats.scanned) + ' 个子码未扫，任务将保留以便补扫。', '⚠️ 确认');
+        // ---- 强制结束 ----
+        window.forceEnd = function() {
+            if (localMode === 'main') {
+                showToast(t('already_sub'), 'warning');
+                return;
             }
-            // ---- 确认框处理 ----
-            var confirmCallback = null;
-            function showConfirm(msg, title) {
-                document.getElementById('confirmMessage').textContent = msg;
-                document.getElementById('confirmTitle').textContent = title || '⚠️ 确认';
-                document.getElementById('confirmModal').style.display = 'flex';
-                confirmCallback = function(confirmed) {
-                    if (confirmed) {
-                        localMode = 'main';
-                        updateStatusBar();
-                        renderList();
-                        showToast('⏹ 已强制结束，剩余 ' + (stats.total - stats.scanned) + ' 个子码未扫，可后续补扫', 'warning', 4000);
-                        scanInput.focus();
-                    }
-                    document.getElementById('confirmModal').style.display = 'none';
-                    confirmCallback = null;
-                };
+            if (taskKeys.length === 0) {
+                showToast(t('no_task'), 'warning');
+                return;
             }
-            function confirmOk() {
-                if (confirmCallback) confirmCallback(true);
+            var stats = getTaskStats();
+            if (stats.scanned === stats.total) {
+                showToast(t('task_complete'), 'info', 2000);
+                return;
             }
-            function confirmCancel() {
-                if (confirmCallback) confirmCallback(false);
-            }
-
-            // ---- 重置我的主码 ----
-            function resetMyKeys() {
-                var allKeys = Array.from(new Set([].concat(taskKeys, pendingKeys)));
-                if (allKeys.length === 0) {
-                    showToast('您没有主码需要重置', 'warning');
-                    return;
-                }
-                if (!ws || ws.readyState !== WebSocket.OPEN) {
-                    showToast(t('server_error'), 'error');
-                    return;
-                }
-                if (confirm('确定释放所有主码吗？\n将释放: ' + allKeys.join(', '))) {
-                    ws.send(JSON.stringify({ type: 'release_keys', keys: allKeys, deviceId: deviceId }));
-                    taskKeys = [];
-                    pendingKeys = [];
+            var msg = t('force_end_confirm', { remaining: stats.total - stats.scanned });
+            document.getElementById('confirmMessage').textContent = msg;
+            document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
+            document.getElementById('confirmModal').style.display = 'flex';
+            confirmCallback = function(confirmed) {
+                document.getElementById('confirmModal').style.display = 'none';
+                if (confirmed) {
                     localMode = 'main';
                     updateStatusBar();
                     renderList();
-                    showToast('🔄 已释放主码: ' + allKeys.join(', '), 'info', 3000);
+                    showToast(t('force_end_msg') + (stats.total - stats.scanned) + t('force_end_sub'), 'warning', 4000);
                     scanInput.focus();
                 }
+                confirmCallback = null;
+            };
+        };
+
+        // ---- 重置我的主码 ----
+        window.resetMyKeys = function() {
+            var allKeys = Array.from(new Set([].concat(taskKeys, pendingKeys)));
+            if (allKeys.length === 0) {
+                showToast(t('no_keys_to_reset'), 'warning');
+                return;
             }
-
-            // ---- 全部重置 ----
-            function resetAll() {
-                if (!ws || ws.readyState !== WebSocket.OPEN) {
-                    showToast(t('server_error'), 'error');
-                    return;
-                }
-                if (confirm('确定重置所有扫描记录吗？（将清除所有主码和扫描状态）')) {
-                    ws.send(JSON.stringify({ type: 'reset_all' }));
-                    taskKeys = [];
-                    pendingKeys = [];
-                    localMode = 'main';
-                    batches = [];
-                    updateStatusBar();
-                    saveLocalState();
-                }
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showToast(t('server_error'), 'error');
+                return;
             }
+            var msg = t('confirm_release') + allKeys.join(', ');
+            if (confirm(msg)) {
+                ws.send(JSON.stringify({ type: 'release_keys', keys: allKeys, deviceId: deviceId }));
+                taskKeys = [];
+                pendingKeys = [];
+                localMode = 'main';
+                updateStatusBar();
+                renderList();
+                showToast(t('release_keys') + allKeys.join(', '), 'info', 3000);
+                scanInput.focus();
+            }
+        };
 
-            // ---- 渲染清单 ----
-            function renderList() {
-                var groups = state.groups;
-                if (groups.length === 0) {
-                    listBody.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + t('no_data') + '</div>';
-                    return;
-                }
-                var filteredKeys = getFilteredMainKeys();
-                var html = '';
-                var globalIdx = 0;
-                var taskSet = new Set(taskKeys);
-                var pendingSet = new Set(pendingKeys);
+        // ---- 全部重置 ----
+        window.resetAll = function() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showToast(t('server_error'), 'error');
+                return;
+            }
+            if (confirm(t('confirm_reset_all'))) {
+                ws.send(JSON.stringify({ type: 'reset_all' }));
+                taskKeys = [];
+                pendingKeys = [];
+                localMode = 'main';
+                batches = [];
+                updateStatusBar();
+                saveLocalState();
+            }
+        };
 
-                for (var i = 0; i < groups.length; i++) {
-                    var g = groups[i];
-                    if (filteredKeys.length > 0 && !filteredKeys.includes(g.key)) continue;
+        // ---- 确认框 ----
+        window.confirmOk = function() {
+            if (confirmCallback) confirmCallback(true);
+        };
+        window.confirmCancel = function() {
+            if (confirmCallback) confirmCallback(false);
+        };
 
-                    var isTask = taskSet.has(g.key);
-                    var isPending = pendingSet.has(g.key);
-                    var allScanned = g.items.every(function(item) { return state.scanStatus[item.code]; });
-                    var typeLabel = g.type === 'fba' ? 'FBA' : '自定义';
-                    var typeClass = g.type === 'fba' ? 'fba' : 'custom';
-                    var boxText = translateBoxCount(g.items.length);
+        // ---- 折叠切换 ----
+        window.toggleGlobalStats = function() {
+            globalStatsCollapsed = !globalStatsCollapsed;
+            updateStatusBar();
+            saveLocalState();
+        };
+        window.toggleResetCollapse = function() {
+            resetCollapsed = !resetCollapsed;
+            updateStatusBar();
+            saveLocalState();
+        };
+        window.toggleAddressCollapse = function() {
+            addressCollapsed = !addressCollapsed;
+            updateStatusBar();
+            saveLocalState();
+        };
+        window.toggleFilterMode = function() {
+            var modes = ['all', 'done', 'undone'];
+            var idx = modes.indexOf(filterMode);
+            filterMode = modes[(idx + 1) % 3];
+            document.getElementById('toggleDoneBtn').setAttribute('data-filter-mode', filterMode);
+            saveLocalState();
+            renderList();
+            updateStatusBar();
+        };
 
-                    if (filterMode === 'done' && !allScanned) continue;
-                    if (filterMode === 'undone' && allScanned) continue;
+        // ---- 渲染清单 ----
+        function renderList() {
+            var groups = state.groups;
+            if (groups.length === 0) {
+                listBody.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + t('no_data') + '</div>';
+                return;
+            }
+            var filteredKeys = getFilteredMainKeys();
+            var html = '';
+            var globalIdx = 0;
+            var taskSet = new Set(taskKeys);
+            var pendingSet = new Set(pendingKeys);
 
+            for (var i = 0; i < groups.length; i++) {
+                var g = groups[i];
+                if (filteredKeys.length > 0 && !filteredKeys.includes(g.key)) continue;
+
+                var isTask = taskSet.has(g.key);
+                var isPending = pendingSet.has(g.key);
+                var allScanned = g.items.every(function(item) { return state.scanStatus[item.code]; });
+                var typeLabel = g.type === 'fba' ? 'FBA' : '自定义';
+                var typeClass = g.type === 'fba' ? 'fba' : 'custom';
+                var boxText = translateBoxCount(g.items.length);
+
+                if (filterMode === 'done' && !allScanned) continue;
+                if (filterMode === 'undone' && allScanned) continue;
+
+                globalIdx++;
+                var statusText = '';
+                if (isTask) statusText = '📋 ' + t('in_task');
+                else if (isPending) statusText = '⏳ ' + t('pending_to_add');
+                else statusText = '';
+                var completedText = t('completed');
+                var isActive = isTask && localMode === 'sub';
+                html += '<div class="list-item group-header ' + (isActive ? 'active' : '') + '">';
+                html += '<span>' + globalIdx + '</span>';
+                html += '<span class="code">' + g.key + ' <span class="badge">' + boxText + '</span> ' + statusText + (allScanned ? ' ✅ ' + completedText : '') + '</span>';
+                html += '<span class="badge ' + typeClass + '">' + typeLabel + '</span>';
+                html += '<span class="status">' + (allScanned ? '✅' : '⬜') + '</span>';
+                html += '</div>';
+
+                for (var j = 0; j < g.items.length; j++) {
+                    var item = g.items[j];
                     globalIdx++;
-                    var statusText = '';
-                    if (isTask) statusText = '📋 ' + t('in_task');
-                    else if (isPending) statusText = '⏳ ' + t('pending_to_add');
-                    else statusText = '';
-                    var completedText = t('completed');
-                    var isActive = isTask && localMode === 'sub';
-                    html += '<div class="list-item group-header ' + (isActive ? 'active' : '') + '">';
+                    var scanned = state.scanStatus[item.code] || false;
+                    var displayCode = item.code;
+                    if (g.type === 'fba') {
+                        displayCode = g.key + '/' + (j + 1);
+                    }
+                    var isActiveItem = isTask && localMode === 'sub';
+                    html += '<div class="list-item ' + (scanned ? 'scanned' : '') + (isActiveItem ? ' active' : '') + '">';
                     html += '<span>' + globalIdx + '</span>';
-                    html += '<span class="code">' + g.key + ' <span class="badge">' + boxText + '</span> ' + statusText + (allScanned ? ' ✅ ' + completedText : '') + '</span>';
-                    html += '<span class="badge ' + typeClass + '">' + typeLabel + '</span>';
-                    html += '<span class="status">' + (allScanned ? '✅' : '⬜') + '</span>';
+                    html += '<span>' + displayCode + '</span>';
+                    html += '<span class="badge" style="opacity:0.5;">' + t('sub_mode') + '</span>';
+                    html += '<span class="status">' + (scanned ? '✅' : '⬜') + '</span>';
                     html += '</div>';
+                }
+            }
+            if (html === '') {
+                var msg = filterMode === 'done' ? '暂无已完成的主码' :
+                           filterMode === 'undone' ? '暂无未完成的主码' : '没有匹配的分组';
+                html = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + msg + '</div>';
+            }
+            listBody.innerHTML = html;
+        }
 
-                    for (var j = 0; j < g.items.length; j++) {
-                        var item = g.items[j];
-                        globalIdx++;
-                        var scanned = state.scanStatus[item.code] || false;
-                        var displayCode = item.code;
-                        if (g.type === 'fba') {
-                            displayCode = g.key + '/' + (j + 1);
-                        }
-                        var isActiveItem = isTask && localMode === 'sub';
-                        html += '<div class="list-item ' + (scanned ? 'scanned' : '') + (isActiveItem ? ' active' : '') + '">';
-                        html += '<span>' + globalIdx + '</span>';
-                        html += '<span>' + displayCode + '</span>';
-                        html += '<span class="badge" style="opacity:0.5;">' + t('sub_mode') + '</span>';
-                        html += '<span class="status">' + (scanned ? '✅' : '⬜') + '</span>';
-                        html += '</div>';
-                    }
-                }
-                if (html === '') {
-                    var msg = filterMode === 'done' ? '暂无已完成的主码' :
-                               filterMode === 'undone' ? '暂无未完成的主码' : '没有匹配的分组';
-                    html = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + msg + '</div>';
-                }
-                listBody.innerHTML = html;
+        // ---- 构建分组 ----
+        function buildGroupsFromRows(rows) {
+            var raw = [];
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var kVal = row.k || '';
+                var asVal = row.as || '';
+                var statusVal = row.status || '';
+                var recipient = row.recipient || '';
+                var code = kVal || asVal;
+                if (!code) continue;
+                var type = 'fba',
+                    prefix = '';
+                if (kVal) { type = 'fba';
+                    prefix = kVal; } else if (asVal) { type = 'custom';
+                    prefix = extractPrefix(asVal); } else continue;
+                raw.push({ k: kVal, as: asVal, code: asVal || kVal, prefix: prefix, type: type, status: statusVal, recipient: recipient });
             }
 
-            // ---- 构建分组 ----
-            function buildGroupsFromRows(rows) {
-                var raw = [];
-                for (var i = 0; i < rows.length; i++) {
-                    var row = rows[i];
-                    var kVal = row.k || '';
-                    var asVal = row.as || '';
-                    var statusVal = row.status || '';
-                    var recipient = row.recipient || '';
-                    var code = kVal || asVal;
-                    if (!code) continue;
-                    var type = 'fba',
-                        prefix = '';
-                    if (kVal) { type = 'fba';
-                        prefix = kVal; } else if (asVal) { type = 'custom';
-                        prefix = extractPrefix(asVal); } else continue;
-                    raw.push({ k: kVal, as: asVal, code: asVal || kVal, prefix: prefix, type: type, status: statusVal, recipient: recipient });
+            var map = new Map();
+            for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                var key = item.prefix;
+                var gkey = key + '|' + item.type;
+                if (!map.has(gkey)) {
+                    map.set(gkey, { key: key, type: item.type, items: [], recipients: new Set(), hasCanceled: false });
                 }
-
-                var map = new Map();
-                for (var i = 0; i < raw.length; i++) {
-                    var item = raw[i];
-                    var key = item.prefix;
-                    var gkey = key + '|' + item.type;
-                    if (!map.has(gkey)) {
-                        map.set(gkey, { key: key, type: item.type, items: [], recipients: new Set(), hasCanceled: false });
-                    }
-                    var g = map.get(gkey);
-                    g.items.push({ code: item.code, raw: item });
-                    if (item.recipient) g.recipients.add(item.recipient);
-                    if (item.status === '已取消') g.hasCanceled = true;
-                }
-                var groups = [];
-                for (var entry of map) {
-                    var g = entry[1];
-                    g.items.sort(function(a, b) {
-                        var na = parseInt(a.code.replace(/^.*?(\d+)$/, '$1'));
-                        var nb = parseInt(b.code.replace(/^.*?(\d+)$/, '$1'));
-                        if (!isNaN(na) && !isNaN(nb)) return na - nb;
-                        return a.code.localeCompare(b.code);
-                    });
-                    g.recipients = Array.from(g.recipients);
-                    groups.push(g);
-                }
-                groups.sort(function(a, b) {
-                    if (a.type !== b.type) return a.type === 'fba' ? -1 : 1;
-                    return a.key.localeCompare(b.key);
+                var g = map.get(gkey);
+                g.items.push({ code: item.code, raw: item });
+                if (item.recipient) g.recipients.add(item.recipient);
+                if (item.status === '已取消') g.hasCanceled = true;
+            }
+            var groups = [];
+            for (var entry of map) {
+                var g = entry[1];
+                g.items.sort(function(a, b) {
+                    var na = parseInt(a.code.replace(/^.*?(\d+)$/, '$1'));
+                    var nb = parseInt(b.code.replace(/^.*?(\d+)$/, '$1'));
+                    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                    return a.code.localeCompare(b.code);
                 });
-                return groups;
+                g.recipients = Array.from(g.recipients);
+                groups.push(g);
             }
+            groups.sort(function(a, b) {
+                if (a.type !== b.type) return a.type === 'fba' ? -1 : 1;
+                return a.key.localeCompare(b.key);
+            });
+            return groups;
+        }
 
-            function extractPrefix(val) {
-                if (!val) return val;
-                var s = String(val).trim();
-                if (s.includes('/')) return s.split('/')[0].trim();
-                var m = s.match(/^(.*?[A-Za-z])U\d+$/);
-                if (m) return m[1] + 'U';
-                var m2 = s.match(/^(.*?[A-Za-z])\d+$/);
-                if (m2 && m2[1].length >= 2) return m2[1];
-                return s;
+        function extractPrefix(val) {
+            if (!val) return val;
+            var s = String(val).trim();
+            if (s.includes('/')) return s.split('/')[0].trim();
+            var m = s.match(/^(.*?[A-Za-z])U\d+$/);
+            if (m) return m[1] + 'U';
+            var m2 = s.match(/^(.*?[A-Za-z])\d+$/);
+            if (m2 && m2[1].length >= 2) return m2[1];
+            return s;
+        }
+
+        // ---- 解析文件 ----
+        function parseExcelData(rows) {
+            var kCol = null,
+                asCol = null,
+                statusCol = null,
+                recipientCol = null;
+            var headers = Object.keys(rows[0] || {});
+            console.log('📋 检测到的列名:', headers);
+
+            var excludeKeywords = ['tax', '税号', '税务'];
+
+            for (var i = 0; i < headers.length; i++) {
+                var h = headers[i];
+                var clean = h.trim();
+                if (clean.toLowerCase() === 'recipient' || clean.toLowerCase() === '收件人') {
+                    recipientCol = h;
+                    break;
+                }
             }
-
-            // ---- 解析文件 ----
-            function parseExcelData(rows) {
-                var kCol = null,
-                    asCol = null,
-                    statusCol = null,
-                    recipientCol = null;
-                var headers = Object.keys(rows[0] || {});
-                console.log('📋 检测到的列名:', headers);
-
-                var excludeKeywords = ['tax', '税号', '税务'];
-
+            if (!recipientCol) {
                 for (var i = 0; i < headers.length; i++) {
                     var h = headers[i];
                     var clean = h.trim();
-                    if (clean.toLowerCase() === 'recipient' || clean.toLowerCase() === '收件人') {
+                    var lower = clean.toLowerCase();
+                    if ((lower.includes('recipient') || lower.includes('收件人')) &&
+                        !excludeKeywords.some(function(kw) { return lower.includes(kw.toLowerCase()); })) {
                         recipientCol = h;
                         break;
                     }
                 }
-                if (!recipientCol) {
-                    for (var i = 0; i < headers.length; i++) {
-                        var h = headers[i];
-                        var clean = h.trim();
-                        var lower = clean.toLowerCase();
-                        if ((lower.includes('recipient') || lower.includes('收件人')) &&
-                            !excludeKeywords.some(function(kw) { return lower.includes(kw.toLowerCase()); })) {
-                            recipientCol = h;
-                            break;
-                        }
-                    }
-                }
-                if (!recipientCol) {
-                    for (var i = 0; i < headers.length; i++) {
-                        var h = headers[i];
-                        var clean = h.trim();
-                        var lower = clean.toLowerCase();
-                        if (lower.includes('收件') || lower.includes('recipient')) {
-                            recipientCol = h;
-                            break;
-                        }
-                    }
-                }
-                if (!recipientCol && headers.length >= 20) {
-                    recipientCol = headers[19];
-                    if (recipientCol && excludeKeywords.some(function(kw) { return recipientCol.toLowerCase().includes(kw.toLowerCase()); })) {
-                        recipientCol = null;
-                    }
-                }
-
+            }
+            if (!recipientCol) {
                 for (var i = 0; i < headers.length; i++) {
                     var h = headers[i];
                     var clean = h.trim();
-                    if (clean.includes('FBA货件ID') || clean.includes('FBAShipmentID') || clean.includes('货件ID')) kCol = h;
-                    if (clean.includes('Custom box barcode') || clean.includes('自定义箱条码') || clean.includes('箱条码')) asCol = h;
-                    if (clean.includes('Status') || clean.includes('状态')) statusCol = h;
+                    var lower = clean.toLowerCase();
+                    if (lower.includes('收件') || lower.includes('recipient')) {
+                        recipientCol = h;
+                        break;
+                    }
                 }
-                if (!kCol && !asCol) {
-                    showToast('未找到K列或AS列', 'error');
-                    return null;
+            }
+            if (!recipientCol && headers.length >= 20) {
+                recipientCol = headers[19];
+                if (recipientCol && excludeKeywords.some(function(kw) { return recipientCol.toLowerCase().includes(kw.toLowerCase()); })) {
+                    recipientCol = null;
                 }
-
-                var parsedRows = [];
-                var recipientSet = new Set();
-                for (var i = 0; i < rows.length; i++) {
-                    var row = rows[i];
-                    var kVal = kCol ? String(row[kCol] || '').trim() : '';
-                    var asVal = asCol ? String(row[asCol] || '').trim() : '';
-                    var statusVal = statusCol ? String(row[statusCol] || '').trim() : '';
-                    var recipient = recipientCol ? String(row[recipientCol] || '').trim() : '';
-                    if (!kVal && !asVal) continue;
-                    if (recipient) recipientSet.add(recipient);
-                    parsedRows.push({
-                        k: kVal,
-                        as: asVal,
-                        status: statusVal,
-                        recipient: recipient
-                    });
-                }
-                console.log('📌 提取到的收件人列表:', Array.from(recipientSet));
-                return { rows: parsedRows, recipients: Array.from(recipientSet) };
             }
 
-            // ---- 地址选择器 ----
-            function renderAddressSelector(recipients, rows, readonly) {
-                if (!recipients || recipients.length === 0) {
-                    addressGrid.innerHTML = '<div class="address-empty-tip">📭 暂无派送地址，点击下方按钮显示全部数据</div>';
-                    inlineSelectedCount.textContent = '0';
-                    if (!readonly) {
-                        inlineConfirmAddress.textContent = t('confirm_address');
-                        inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
-                        addressStatusMsg.textContent = '';
-                        inlineConfirmAddress.onclick = function() {
-                            selectedAddresses = [];
-                            addressConfirmed = true;
-                            renderList();
-                            updateStatusBar();
-                            showToast('已切换为显示全部数据', 'success');
-                            renderAddressSelector(recipients, rows, true);
-                        };
-                    } else {
-                        inlineConfirmAddress.textContent = t('change');
-                        inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
-                        addressStatusMsg.textContent = '当前显示全部数据';
-                        addressStatusMsg.style.color = '#64748b';
-                        inlineConfirmAddress.onclick = function() {
-                            renderAddressSelector(recipients, rows, false);
-                        };
-                    }
-                    return;
-                }
+            for (var i = 0; i < headers.length; i++) {
+                var h = headers[i];
+                var clean = h.trim();
+                if (clean.includes('FBA货件ID') || clean.includes('FBAShipmentID') || clean.includes('货件ID')) kCol = h;
+                if (clean.includes('Custom box barcode') || clean.includes('自定义箱条码') || clean.includes('箱条码')) asCol = h;
+                if (clean.includes('Status') || clean.includes('状态')) statusCol = h;
+            }
+            if (!kCol && !asCol) {
+                showToast(t('no_data_parsed'), 'error');
+                return null;
+            }
 
-                addressGrid.innerHTML = '';
-                var selected = [];
-                if (readonly && selectedAddresses.length > 0) {
-                    selected = selectedAddresses.slice();
-                } else if (!readonly && selectedAddresses.length > 0) {
-                    selected = selectedAddresses.slice();
-                }
+            var parsedRows = [];
+            var recipientSet = new Set();
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var kVal = kCol ? String(row[kCol] || '').trim() : '';
+                var asVal = asCol ? String(row[asCol] || '').trim() : '';
+                var statusVal = statusCol ? String(row[statusCol] || '').trim() : '';
+                var recipient = recipientCol ? String(row[recipientCol] || '').trim() : '';
+                if (!kVal && !asVal) continue;
+                if (recipient) recipientSet.add(recipient);
+                parsedRows.push({
+                    k: kVal,
+                    as: asVal,
+                    status: statusVal,
+                    recipient: recipient
+                });
+            }
+            console.log('📌 提取到的收件人列表:', Array.from(recipientSet));
+            return { rows: parsedRows, recipients: Array.from(recipientSet) };
+        }
 
-                for (var i = 0; i < recipients.length; i++) {
-                    var addr = recipients[i];
-                    var item = document.createElement('div');
-                    item.className = 'address-item';
-                    if (selected.includes(addr)) item.classList.add('selected');
-                    if (readonly && !selected.includes(addr)) item.classList.add('disabled');
-                    item.innerHTML = '<span class="checkbox"></span><span>' + addr + '</span>';
-                    if (!readonly) {
-                        item.onclick = function(a) {
-                            return function() {
-                                var idx = selected.indexOf(a);
-                                if (idx >= 0) {
-                                    selected.splice(idx, 1);
-                                    this.classList.remove('selected');
-                                } else {
-                                    selected.push(a);
-                                    this.classList.add('selected');
-                                }
-                                inlineSelectedCount.textContent = selected.length;
-                            };
-                        }(addr);
-                    }
-                    addressGrid.appendChild(item);
-                }
-
-                inlineSelectedCount.textContent = selected.length;
-
-                if (readonly) {
-                    inlineConfirmAddress.textContent = t('change');
-                    inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
-                    addressStatusMsg.textContent = '✅ 已选 ' + selected.length + ' 个地址，点击“更改地址”可重新选择';
-                    addressStatusMsg.style.color = '#16a34a';
-                    inlineConfirmAddress.onclick = function() {
-                        renderAddressSelector(recipients, rows, false);
-                    };
-                } else {
+        // ---- 地址选择器 ----
+        function renderAddressSelector(recipients, rows, readonly) {
+            if (!recipients || recipients.length === 0) {
+                addressGrid.innerHTML = '<div class="address-empty-tip">' + t('no_delivery_address') + '</div>';
+                inlineSelectedCount.textContent = '0';
+                if (!readonly) {
                     inlineConfirmAddress.textContent = t('confirm_address');
                     inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
                     addressStatusMsg.textContent = '';
                     inlineConfirmAddress.onclick = function() {
-                        if (selected.length === 0) {
-                            showToast('请至少选择一个地址', 'warning');
-                            return;
-                        }
-                        selectedAddresses = selected;
+                        selectedAddresses = [];
                         addressConfirmed = true;
                         renderList();
                         updateStatusBar();
-                        showToast('✅ 已选择 ' + selected.length + ' 个地址，清单已过滤', 'success');
+                        showToast(t('address_all'), 'success');
                         renderAddressSelector(recipients, rows, true);
                     };
-                }
-            }
-
-            // ---- 上传文件 ----
-            function handleFile(file) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        var data = new Uint8Array(e.target.result);
-                        var workbook = XLSX.read(data, { type: 'array' });
-                        var sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
-                        var parsed = parseExcelData(rows);
-                        if (!parsed) return;
-                        if (parsed.rows.length === 0) {
-                            showToast('未解析到有效数据', 'error');
-                            return;
-                        }
-
-                        fileInfo.innerHTML = '✅ 已解析: ' + file.name + ' (' + parsed.rows.length + ' 行，' + parsed.recipients.length + ' 个收件人)';
-                        allRows = parsed.rows;
-
-                        var completeGroups = buildGroupsFromRows(parsed.rows);
-                        allGroups = completeGroups;
-                        var recips = parsed.recipients || [];
-                        allRecipients = recips;
-
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId: deviceId }));
-                        } else {
-                            showToast('⏳ 等待连接后上传数据...', 'info');
-                        }
-
-                        if (recips.length > 0) {
-                            showToast('📍 已识别 ' + recips.length + ' 个收件人地址', 'success', 3000);
-                        } else {
-                            showToast('⚠️ 未找到收件人地址信息', 'warning', 3000);
-                        }
-
-                        var readonly = false;
-                        if (selectedAddresses.length > 0) {
-                            var valid = selectedAddresses.every(function(a) { return recips.includes(a); });
-                            if (valid) readonly = true;
-                            else selectedAddresses = [];
-                        }
-                        renderAddressSelector(recips, parsed.rows, readonly);
-
-                    } catch (err) {
-                        showToast('❌ 解析失败: ' + err.message, 'error');
-                        console.error('解析错误:', err);
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-            }
-
-            // ---- 折叠切换 ----
-            function toggleGlobalStats() {
-                globalStatsCollapsed = !globalStatsCollapsed;
-                updateStatusBar();
-                saveLocalState();
-            }
-            function toggleResetCollapse() {
-                resetCollapsed = !resetCollapsed;
-                updateStatusBar();
-                saveLocalState();
-            }
-            function toggleAddressCollapse() {
-                addressCollapsed = !addressCollapsed;
-                updateStatusBar();
-                saveLocalState();
-            }
-            function toggleFilterMode() {
-                var modes = ['all', 'done', 'undone'];
-                var idx = modes.indexOf(filterMode);
-                filterMode = modes[(idx + 1) % 3];
-                document.getElementById('toggleDoneBtn').setAttribute('data-filter-mode', filterMode);
-                saveLocalState();
-                renderList();
-                updateStatusBar();
-            }
-
-            // ---- 导出 ----
-            function exportTxt() { /* 省略，可复用之前代码 */ showToast('📄 TXT已导出', 'success'); }
-            function exportExcel() { /* 省略，可复用之前代码 */ showToast('📊 Excel已导出', 'success'); }
-
-            // ---- 更改地址 ----
-            function changeAddress() {
-                if (allRows.length === 0) {
-                    showToast('请先上传文件', 'warning');
-                    return;
-                }
-                var recips = allRecipients;
-                if (recips.length === 0) {
-                    showToast('没有收件人信息，无法选择', 'warning');
-                    return;
-                }
-                renderAddressSelector(recips, allRows, false);
-            }
-
-            // ---- 身份验证 ----
-            function showOperatorModal(reauth) {
-                reauth = reauth || false;
-                isReauth = reauth;
-                var modal = document.getElementById('operatorModal');
-                modal.style.display = 'flex';
-                if (reauth) {
-                    document.getElementById('operatorInput').value = operator || '';
-                    document.getElementById('vehicleInput').value = vehicle || '';
                 } else {
-                    document.getElementById('operatorInput').value = '';
-                    document.getElementById('vehicleInput').value = '';
+                    inlineConfirmAddress.textContent = t('change');
+                    inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
+                    addressStatusMsg.textContent = t('current_all');
+                    addressStatusMsg.style.color = '#64748b';
+                    inlineConfirmAddress.onclick = function() {
+                        renderAddressSelector(recipients, rows, false);
+                    };
                 }
-                setTimeout(function() { document.getElementById('operatorInput').focus(); }, 100);
+                return;
             }
-            function hideOperatorModal() {
-                document.getElementById('operatorModal').style.display = 'none';
+
+            addressGrid.innerHTML = '';
+            var selected = [];
+            if (readonly && selectedAddresses.length > 0) {
+                selected = selectedAddresses.slice();
+            } else if (!readonly && selectedAddresses.length > 0) {
+                selected = selectedAddresses.slice();
             }
-            function cancelIdentity() {
-                hideOperatorModal();
-                if (!isInitialized) {
-                    showToast('请完成身份验证', 'warning');
-                    setTimeout(function() { showOperatorModal(false); }, 300);
+
+            for (var i = 0; i < recipients.length; i++) {
+                var addr = recipients[i];
+                var item = document.createElement('div');
+                item.className = 'address-item';
+                if (selected.includes(addr)) item.classList.add('selected');
+                if (readonly && !selected.includes(addr)) item.classList.add('disabled');
+                item.innerHTML = '<span class="checkbox"></span><span>' + addr + '</span>';
+                if (!readonly) {
+                    item.onclick = (function(a) {
+                        return function() {
+                            var idx = selected.indexOf(a);
+                            if (idx >= 0) {
+                                selected.splice(idx, 1);
+                                this.classList.remove('selected');
+                            } else {
+                                selected.push(a);
+                                this.classList.add('selected');
+                            }
+                            inlineSelectedCount.textContent = selected.length;
+                        };
+                    })(addr);
+                }
+                addressGrid.appendChild(item);
+            }
+
+            inlineSelectedCount.textContent = selected.length;
+
+            if (readonly) {
+                inlineConfirmAddress.textContent = t('change');
+                inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
+                addressStatusMsg.textContent = t('confirmed_addresses', { count: selected.length });
+                addressStatusMsg.style.color = '#16a34a';
+                inlineConfirmAddress.onclick = function() {
+                    renderAddressSelector(recipients, rows, false);
+                };
+            } else {
+                inlineConfirmAddress.textContent = t('confirm_address');
+                inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
+                addressStatusMsg.textContent = '';
+                inlineConfirmAddress.onclick = function() {
+                    if (selected.length === 0) {
+                        showToast(t('please_select_address'), 'warning');
+                        return;
+                    }
+                    selectedAddresses = selected;
+                    addressConfirmed = true;
+                    renderList();
+                    updateStatusBar();
+                    showToast(t('address_selected', { count: selected.length }), 'success');
+                    renderAddressSelector(recipients, rows, true);
+                };
+            }
+        }
+
+        window.confirmAddressSelection = function() {
+            // 由 inlineConfirmAddress.onclick 处理
+        };
+
+        // ---- 上传文件 ----
+        window.handleFile = function(file) {
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var workbook = XLSX.read(data, { type: 'array' });
+                    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                    var parsed = parseExcelData(rows);
+                    if (!parsed) return;
+                    if (parsed.rows.length === 0) {
+                        showToast(t('no_data_parsed'), 'error');
+                        return;
+                    }
+
+                    fileInfo.innerHTML = t('parsed_info') + file.name + ' (' + parsed.rows.length + t('rows_info') + parsed.recipients.length + t('recipients_info') + ')';
+                    allRows = parsed.rows;
+
+                    var completeGroups = buildGroupsFromRows(parsed.rows);
+                    allGroups = completeGroups;
+                    var recips = parsed.recipients || [];
+                    allRecipients = recips;
+
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId: deviceId }));
+                    } else {
+                        showToast(t('waiting_upload'), 'info');
+                    }
+
+                    if (recips.length > 0) {
+                        showToast(t('no_recipient', { count: recips.length }), 'success', 3000);
+                    } else {
+                        showToast(t('no_recipient_found'), 'warning', 3000);
+                    }
+
+                    var readonly = false;
+                    if (selectedAddresses.length > 0) {
+                        var valid = selectedAddresses.every(function(a) { return recips.includes(a); });
+                        if (valid) readonly = true;
+                        else selectedAddresses = [];
+                    }
+                    renderAddressSelector(recips, parsed.rows, readonly);
+
+                } catch (err) {
+                    showToast(t('file_upload_error') + err.message, 'error');
+                    console.error('解析错误:', err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        // ---- 更改地址 ----
+        window.changeAddress = function() {
+            if (allRows.length === 0) {
+                showToast(t('upload_first'), 'warning');
+                return;
+            }
+            var recips = allRecipients;
+            if (recips.length === 0) {
+                showToast(t('no_delivery_info'), 'warning');
+                return;
+            }
+            renderAddressSelector(recips, allRows, false);
+        };
+
+        // ---- 导出 ----
+        window.exportTxt = function() {
+            // 简化导出
+            var lines = ['复核清单', '生成: ' + new Date().toLocaleString()];
+            if (selectedAddresses.length) lines.push('收件人: ' + selectedAddresses.join(', '));
+            lines.push('─'.repeat(50));
+            for (var i = 0; i < state.groups.length; i++) {
+                var g = state.groups[i];
+                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
+                lines.push('【' + (g.type === 'fba' ? 'FBA货件' : '自定义箱条码') + ': ' + g.key + '】 ' + g.items.length + ' 箱');
+                for (var j = 0; j < g.items.length; j++) {
+                    var item = g.items[j];
+                    var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+                    var scanned = state.scanStatus[item.code] || false;
+                    lines.push('  ' + String(j + 1).padStart(3, ' ') + '. ' + (scanned ? '✅' : '⬜') + ' ' + displayCode);
+                }
+                lines.push('');
+            }
+            var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '复核清单_' + new Date().toISOString().slice(0, 10) + '.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('📄 TXT已导出', 'success');
+        };
+
+        window.exportExcel = function() {
+            // 简化导出
+            var wb = XLSX.utils.book_new();
+            var rows = [];
+            var now = new Date();
+            var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            rows.push(['扫描员:', operator || '']);
+            rows.push(['车牌:', vehicle || '']);
+            rows.push(['导出日期:', dateStr]);
+            rows.push([]);
+            var headers = ['#', '分组类型', '分组Key', '子项序号', '子项条码', '已扫描', '箱数'];
+            rows.push(headers);
+            var idx = 0;
+            for (var i = 0; i < state.groups.length; i++) {
+                var g = state.groups[i];
+                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
+                idx++;
+                rows.push([idx, g.type === 'fba' ? 'FBA货件' : '自定义', g.key, '', '共' + g.items.length + '箱', '', '']);
+                for (var j = 0; j < g.items.length; j++) {
+                    var item = g.items[j];
+                    var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+                    var scanned = state.scanStatus[item.code] || false;
+                    rows.push(['', '', '', j + 1, displayCode, scanned ? '是' : '否', scanned ? 1 : 0]);
                 }
             }
-            function confirmIdentity() {
-                var op = document.getElementById('operatorInput').value.trim();
-                var veh = document.getElementById('vehicleInput').value.trim();
-                if (!op || !veh) {
-                    showToast('请填写完整信息', 'error');
-                    return;
+            var ws = XLSX.utils.aoa_to_sheet(rows);
+            XLSX.utils.book_append_sheet(wb, ws, '复核清单');
+            var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            var blob = new Blob([out], { type: 'application/octet-stream' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '复核清单_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('📊 Excel已导出', 'success');
+        };
+
+        // ---- 身份验证 ----
+        window.showOperatorModal = function(reauth) {
+            reauth = reauth || false;
+            var modal = document.getElementById('operatorModal');
+            modal.style.display = 'flex';
+            if (reauth) {
+                document.getElementById('operatorInput').value = operator || '';
+                document.getElementById('vehicleInput').value = vehicle || '';
+            } else {
+                document.getElementById('operatorInput').value = '';
+                document.getElementById('vehicleInput').value = '';
+            }
+            setTimeout(function() { document.getElementById('operatorInput').focus(); }, 100);
+        };
+
+        function hideOperatorModal() {
+            document.getElementById('operatorModal').style.display = 'none';
+        }
+
+        window.cancelIdentity = function() {
+            hideOperatorModal();
+            if (!isInitialized) {
+                showToast('请完成身份验证', 'warning');
+                setTimeout(function() { window.showOperatorModal(false); }, 300);
+            }
+        };
+
+        window.confirmIdentity = function() {
+            var op = document.getElementById('operatorInput').value.trim();
+            var veh = document.getElementById('vehicleInput').value.trim();
+            if (!op || !veh) {
+                showToast('请填写完整信息', 'error');
+                return;
+            }
+            operator = op;
+            vehicle = veh;
+            localStorage.setItem('operator', operator);
+            localStorage.setItem('vehicle', vehicle);
+            operatorDisplay.textContent = operator;
+            vehicleDisplay.textContent = vehicle;
+            hideOperatorModal();
+            showToast(t('identity_updated'), 'success', 2000);
+            scanInput.focus();
+            if (!isInitialized) {
+                isInitialized = true;
+                // 如果 WebSocket 尚未连接，则启动
+                if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    connectWebSocket();
                 }
-                operator = op;
-                vehicle = veh;
+            }
+        };
+
+        // ---- 持久化 ----
+        function saveLocalState() {
+            try {
+                localStorage.setItem('pda_localMode', localMode);
+                localStorage.setItem('pda_taskKeys', JSON.stringify(taskKeys));
+                localStorage.setItem('pda_pendingKeys', JSON.stringify(pendingKeys));
+                localStorage.setItem('pda_filterMode', filterMode);
+                localStorage.setItem('pda_statsCollapsed', JSON.stringify(globalStatsCollapsed));
+                localStorage.setItem('pda_resetCollapsed', JSON.stringify(resetCollapsed));
+                localStorage.setItem('pda_selectedAddresses', JSON.stringify(selectedAddresses));
+                localStorage.setItem('pda_addressCollapsed', JSON.stringify(addressCollapsed));
+                localStorage.setItem('pda_batches', JSON.stringify(batches));
+            } catch (e) { console.warn('保存本地状态失败:', e); }
+        }
+
+        function loadLocalState() {
+            try {
+                var mode = localStorage.getItem('pda_localMode');
+                var task = localStorage.getItem('pda_taskKeys');
+                var pending = localStorage.getItem('pda_pendingKeys');
+                var filter = localStorage.getItem('pda_filterMode');
+                var collapsed = localStorage.getItem('pda_statsCollapsed');
+                var resetCol = localStorage.getItem('pda_resetCollapsed');
+                var addr = localStorage.getItem('pda_selectedAddresses');
+                var addrColl = localStorage.getItem('pda_addressCollapsed');
+                var batchData = localStorage.getItem('pda_batches');
+                if (mode) localMode = mode;
+                if (task) { var p = JSON.parse(task); if (Array.isArray(p)) taskKeys = p; }
+                if (pending) { var p = JSON.parse(pending); if (Array.isArray(p)) pendingKeys = p; }
+                if (filter && ['all','done','undone'].includes(filter)) filterMode = filter;
+                if (collapsed) globalStatsCollapsed = JSON.parse(collapsed);
+                if (resetCol) resetCollapsed = JSON.parse(resetCol);
+                if (addr) { var p = JSON.parse(addr); if (Array.isArray(p)) selectedAddresses = p; }
+                if (addrColl !== null) addressCollapsed = JSON.parse(addrColl);
+                if (batchData) { var p = JSON.parse(batchData); if (Array.isArray(p)) batches = p.map(function(b) { if (b.operator === undefined) b.operator = ''; if (b.vehicle === undefined) b.vehicle = ''; return b; }); }
+            } catch (e) { console.warn('加载本地状态失败:', e); }
+        }
+
+        // ---- 初始化 ----
+        function init() {
+            console.log('🚀 页面初始化...');
+            loadLocalState();
+            console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
+
+            // 检查是否已有身份
+            var savedOperator = localStorage.getItem('operator');
+            var savedVehicle = localStorage.getItem('vehicle');
+            if (savedOperator && savedVehicle) {
+                operator = savedOperator;
+                vehicle = savedVehicle;
+                operatorDisplay.textContent = operator;
+                vehicleDisplay.textContent = vehicle;
+                isInitialized = true;
+                // 自动连接
+                connectWebSocket();
+            } else {
+                // 自动填充默认身份
+                operator = 'PDA';
+                vehicle = 'DEV';
                 localStorage.setItem('operator', operator);
                 localStorage.setItem('vehicle', vehicle);
-                document.getElementById('operatorDisplay').textContent = operator;
-                document.getElementById('vehicleDisplay').textContent = vehicle;
-                hideOperatorModal();
-                showToast(t('identity_updated'), 'success', 2000);
-                scanInput.focus();
-                if (isReauth) {
-                    isReauth = false;
-                } else {
-                    if (!isInitialized) {
-                        isInitialized = true;
-                        proceedAfterAuth();
-                    }
-                }
-            }
-
-            // ---- 持久化 ----
-            function saveLocalState() {
-                try {
-                    localStorage.setItem('pda_localMode', localMode);
-                    localStorage.setItem('pda_taskKeys', JSON.stringify(taskKeys));
-                    localStorage.setItem('pda_pendingKeys', JSON.stringify(pendingKeys));
-                    localStorage.setItem('pda_filterMode', filterMode);
-                    localStorage.setItem('pda_statsCollapsed', JSON.stringify(globalStatsCollapsed));
-                    localStorage.setItem('pda_resetCollapsed', JSON.stringify(resetCollapsed));
-                    localStorage.setItem('pda_selectedAddresses', JSON.stringify(selectedAddresses));
-                    localStorage.setItem('pda_addressCollapsed', JSON.stringify(addressCollapsed));
-                    localStorage.setItem('pda_batches', JSON.stringify(batches));
-                } catch (e) { console.warn('保存本地状态失败:', e); }
-            }
-            function loadLocalState() {
-                try {
-                    var mode = localStorage.getItem('pda_localMode');
-                    var task = localStorage.getItem('pda_taskKeys');
-                    var pending = localStorage.getItem('pda_pendingKeys');
-                    var filter = localStorage.getItem('pda_filterMode');
-                    var collapsed = localStorage.getItem('pda_statsCollapsed');
-                    var resetCol = localStorage.getItem('pda_resetCollapsed');
-                    var addr = localStorage.getItem('pda_selectedAddresses');
-                    var addrColl = localStorage.getItem('pda_addressCollapsed');
-                    var batchData = localStorage.getItem('pda_batches');
-                    if (mode) localMode = mode;
-                    if (task) { var p = JSON.parse(task); if (Array.isArray(p)) taskKeys = p; }
-                    if (pending) { var p = JSON.parse(pending); if (Array.isArray(p)) pendingKeys = p; }
-                    if (filter && ['all','done','undone'].includes(filter)) filterMode = filter;
-                    if (collapsed) globalStatsCollapsed = JSON.parse(collapsed);
-                    if (resetCol) resetCollapsed = JSON.parse(resetCol);
-                    if (addr) { var p = JSON.parse(addr); if (Array.isArray(p)) selectedAddresses = p; }
-                    if (addrColl !== null) addressCollapsed = JSON.parse(addrColl);
-                    if (batchData) { var p = JSON.parse(batchData); if (Array.isArray(p)) batches = p.map(function(b) { if (b.operator === undefined) b.operator = ''; if (b.vehicle === undefined) b.vehicle = ''; return b; }); }
-                } catch (e) { console.warn('加载本地状态失败:', e); }
-            }
-
-            // ---- 初始化 ----
-            function init() {
-                console.log('🚀 页面初始化...');
-                loadLocalState();
-                console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
-
-                var savedOperator = localStorage.getItem('operator');
-                var savedVehicle = localStorage.getItem('vehicle');
-                if (savedOperator && savedVehicle) {
-                    operator = savedOperator;
-                    vehicle = savedVehicle;
-                    operatorDisplay.textContent = operator;
-                    vehicleDisplay.textContent = vehicle;
-                    isInitialized = true;
-                    proceedAfterAuth();
-                } else {
-                    // 自动填充默认身份
-                    operator = 'PDA';
-                    vehicle = 'DEV';
-                    localStorage.setItem('operator', operator);
-                    localStorage.setItem('vehicle', vehicle);
-                    operatorDisplay.textContent = operator;
-                    vehicleDisplay.textContent = vehicle;
-                    isInitialized = true;
-                    proceedAfterAuth();
-                    // 仍然显示模态框让用户修改（但不阻塞连接）
-                    showOperatorModal(false);
-                }
-
-                // 绑定文件上传
-                fileInput.onchange = function(e) {
-                    if (this.files.length) handleFile(this.files[0]);
-                    this.value = '';
-                };
-                document.getElementById('uploadZone').onclick = function() { fileInput.click(); };
-
-                // 语言切换
-                document.getElementById('langSwitch').onclick = function() {
-                    setLang(currentLang === 'zh' ? 'es' : 'zh');
-                };
-
-                // 输入框回车扫描
-                scanInput.onkeydown = function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleScan();
-                    }
-                };
-
-                // 更新UI
-                updateUI();
-                updateStatusBar();
-                renderList();
-                setTimeout(function() { scanInput.focus(); }, 500);
-            }
-
-            function proceedAfterAuth() {
-                // 先连接 WebSocket
+                operatorDisplay.textContent = operator;
+                vehicleDisplay.textContent = vehicle;
+                isInitialized = true;
                 connectWebSocket();
+                // 显示模态框方便修改
+                window.showOperatorModal(false);
             }
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
-        })();
+            // 上传区域点击触发文件选择
+            document.getElementById('uploadZone').onclick = function() { fileInput.click(); };
+
+            // 语言切换按钮已通过 onclick 处理
+            updateUI();
+            updateStatusBar();
+            renderList();
+            setTimeout(function() { scanInput.focus(); }, 500);
+        }
+
+        // 页面加载后执行
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // 暴露一些函数给 window（已在上面定义，但确保存在）
+        window.connectWebSocket = connectWebSocket;
+        window.updateUI = updateUI;
+        window.toggleLang = window.toggleLang || function() { /* 已定义 */ };
+        // 其他已定义
     </script>
 </body>
 </html>
