@@ -103,6 +103,10 @@
         .toast.warning { background: #f59e0b; }
         .toggle-done-btn { background: #e2e8f0; border: 1px solid #cbd5e1; padding: 4px 14px; border-radius: 30px; font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.15s; color: #1e293b; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; }
         .toggle-done-btn.active { background: #dbeafe; border-color: #2563eb; color: #2563eb; }
+        /* 自定义 confirm 模态框 */
+        #confirmModal .modal { max-width: 420px; }
+        #confirmModal .modal .btn { margin-top: 10px; }
+        #confirmModal .modal .btn-cancel { background: #e2e8f0; color: #1e293b; }
     </style>
 </head>
 <body>
@@ -193,7 +197,7 @@
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
             <h2 id="confirmTitle">⚠️ 确认</h2>
-            <p id="confirmMessage"></p>
+            <p id="confirmMessage" style="white-space:pre-wrap; word-break:break-word;"></p>
             <button class="btn btn-primary" id="confirmOkBtn">确定</button>
             <button class="btn btn-cancel" id="confirmCancelBtn">取消</button>
         </div>
@@ -255,11 +259,15 @@
                     auth_title: '🔐 身份验证',
                     operator_name: '扫描员姓名',
                     vehicle_plate: '车牌号',
+                    operator_name_placeholder: '请输入姓名',
+                    vehicle_plate_placeholder: '请输入车牌号',
                     confirm: '确认',
                     cancel: '取消',
                     main_mode: '主码',
                     sub_mode: '子码',
                     none: '无',
+                    in_task: '任务中',
+                    pending_to_add: '待添加',
                     scanned_complete: '🎉 当前任务所有子码扫描完成！自动切回主码模式',
                     task_invalid: '🔄 您的任务已失效，已切回主码模式',
                     connected: '✅ 已连接到服务器',
@@ -321,7 +329,6 @@
                     confirm_ok: '确定',
                     confirm_cancel: '取消',
                     scan_placeholder: '扫描条码...',
-                    escanear_codigo: 'Escanear código de QR',
                 },
                 es: {
                     pageTitle: '📦 Verificación de Salida',
@@ -361,11 +368,15 @@
                     auth_title: '🔐 Autenticación',
                     operator_name: 'Nombre del operador',
                     vehicle_plate: 'Matrícula',
+                    operator_name_placeholder: 'Nombre del operador',
+                    vehicle_plate_placeholder: 'Matrícula',
                     confirm: 'Confirmar',
                     cancel: 'Cancelar',
                     main_mode: 'Código principal',
                     sub_mode: 'Subcódigo',
                     none: 'No',
+                    in_task: 'En tarea',
+                    pending_to_add: 'Pendiente',
                     scanned_complete: '🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código',
                     task_invalid: '🔄 Tarea inválida, cambiando a modo código',
                     connected: '✅ Conectado al servidor',
@@ -427,12 +438,11 @@
                     confirm_ok: 'Aceptar',
                     confirm_cancel: 'Cancelar',
                     scan_placeholder: 'Escanear código de QR',
-                    escanear_codigo: 'Escanear código de QR',
                 }
             };
 
-            let currentLang = localStorage.getItem('pda_lang') || 'es'; // 默认西语
-            let confirmResolve = null; // 用于自定义 confirm
+            let currentLang = localStorage.getItem('pda_lang') || 'es';
+            let confirmResolve = null;
 
             function t(key, replacements) {
                 let text = LANG[currentLang][key] || key;
@@ -486,7 +496,7 @@
                 document.querySelectorAll('[data-i18n]').forEach(el => {
                     el.textContent = t(el.getAttribute('data-i18n'));
                 });
-                // 更新所有静态文本
+                // 固定 ID 元素
                 document.getElementById('pageTitle').textContent = t('pageTitle');
                 document.getElementById('lblOperator').textContent = t('operator');
                 document.getElementById('lblVehicle').textContent = t('vehicle');
@@ -510,6 +520,8 @@
                 document.getElementById('modalTitle').textContent = t('auth_title');
                 document.getElementById('lblOperatorName').textContent = t('operator_name');
                 document.getElementById('lblVehiclePlate').textContent = t('vehicle_plate');
+                document.getElementById('operatorInput').placeholder = t('operator_name_placeholder');
+                document.getElementById('vehicleInput').placeholder = t('vehicle_plate_placeholder');
                 document.getElementById('changeIdentityBtn').textContent = t('change_identity');
                 document.getElementById('changeAddressBtn').textContent = t('change');
                 document.getElementById('inlineConfirmAddress').textContent = t('confirm_address');
@@ -523,21 +535,19 @@
                 document.getElementById('exportExcelBtn').textContent = t('export_excel');
                 document.getElementById('scanInput').placeholder = t('scan_placeholder');
                 document.getElementById('lblNoData').textContent = t('no_data');
-                // 其他按钮已用 data-i18n
-                // 更新连接状态
+                // 确认对话框
+                document.getElementById('confirmOkBtn').textContent = t('confirm_ok');
+                document.getElementById('confirmCancelBtn').textContent = t('confirm_cancel');
+                document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
+
                 updateConnectionStatus();
                 updateModeDisplay();
                 updateTaskDisplay();
                 updatePendingDisplay();
                 updateFileInfo();
                 updateFilterButtonText();
-                // 重新渲染清单
                 renderList();
                 updateStatusBar();
-                // 确认对话框按钮
-                document.getElementById('confirmOkBtn').textContent = t('confirm_ok');
-                document.getElementById('confirmCancelBtn').textContent = t('confirm_cancel');
-                document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
                 document.getElementById('langSwitch').textContent = currentLang === 'zh' ? 'Español' : '中文';
             }
 
@@ -708,21 +718,10 @@
             // ---- Toast ----
             function showToast(msg, type = 'info', duration = 3000) {
                 if (toastTimer) clearTimeout(toastTimer);
-                // 翻译消息（如果当前语言不是中文）
+                // 尝试翻译常见消息（简单替换）
                 if (currentLang !== 'zh') {
-                    // 简单替换常见模式
-                    msg = msg.replace(/✅ 已添加主码: /g, t('main_added'));
-                    msg = msg.replace(/✅ 已扫描: /g, t('sub_scanned'));
-                    msg = msg.replace(/❌ 主码 /g, '❌ Código ');
-                    msg = msg.replace(/已被其他设备锁定，不可重复扫描/g, 'bloqueado por otro dispositivo, no se puede repetir');
-                    msg = msg.replace(/❌ 无效子码: /g, '❌ Subcódigo inválido: ');
-                    msg = msg.replace(/⏳ 子码 /g, '⏳ Subcódigo ');
-                    msg = msg.replace(/已扫描过/g, 'ya escaneada');
-                    msg = msg.replace(/不属于当前任务主码/g, 'no pertenece al código actual');
-                    msg = msg.replace(/⏳ 主码 /g, '⏳ Código ');
-                    msg = msg.replace(/已完成，无需再次添加/g, 'completado, no se puede agregar nuevamente');
-                    msg = msg.replace(/❌ 未找到主码: /g, '❌ Código no encontrado: ');
-                    // 补扫消息已在其他地方处理
+                    // 注意：主码添加、子码扫描等已在消息处理中处理，这里只处理通用错误
+                    // 保留原样，因为主要消息已在 ws.onmessage 中定制
                 }
                 toastEl.textContent = msg;
                 toastEl.className = 'toast';
@@ -893,7 +892,8 @@
                             } else if (data.type === 'success') {
                                 const msg = data.message;
                                 console.log('🔍 成功消息内容:', msg);
-                                // 补扫消息
+
+                                // ---- 处理补扫 ----
                                 const patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
                                 if (patchMatch) {
                                     const patchKey = patchMatch[1];
@@ -908,10 +908,11 @@
                                     scanInput.focus();
                                     return;
                                 }
-                                // 主码添加
-                                const match = msg.match(/已添加主码:\s*([^\s]+)/);
-                                if (match) {
-                                    const key = match[1];
+
+                                // ---- 处理主码添加 ----
+                                const mainMatch = msg.match(/已添加主码:\s*([^\s]+)/);
+                                if (mainMatch) {
+                                    const key = mainMatch[1];
                                     if (isMainCompleted(key)) {
                                         showToast(t('main_completed', { key }), 'warning', 2000);
                                         scanInput.value = '';
@@ -927,35 +928,63 @@
                                     }
                                     if (!pendingKeys.includes(key)) {
                                         pendingKeys.push(key);
-                                        renderList();
-                                        updateStatusBar();
                                         // 显示翻译后的消息
                                         const group = state.groups.find(g => g.key === key);
                                         const boxText = group ? translateBoxCount(group.items.length) : '';
                                         showToast(t('main_added') + key + (boxText ? ' (' + boxText + ')' : ''), 'success', 2000);
+                                        renderList();
+                                        updateStatusBar();
                                     }
                                     scanInput.value = '';
                                     scanInput.focus();
                                     return;
                                 }
-                                // 子码扫描
+
+                                // ---- 处理子码扫描 ----
                                 const subMatch = msg.match(/✅ 已扫描:\s*([^\s]+)\s*\((\d+)\/(\d+)\)/);
                                 if (subMatch) {
                                     const code = subMatch[1];
                                     const scanned = parseInt(subMatch[2]);
                                     const total = parseInt(subMatch[3]);
+                                    // 乐观更新：立即标记为已扫
+                                    for (const g of state.groups) {
+                                        for (const item of g.items) {
+                                            if (item.code === code) {
+                                                state.scanStatus[code] = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    renderList();
+                                    updateStatusBar();
                                     showToast(t('sub_scanned') + code + t('sub_progress', { scanned, total }), 'success', 2000);
                                     scanInput.value = '';
                                     scanInput.focus();
                                     return;
                                 }
-                                // 其他成功消息（释放、重置等）直接显示（已由 showToast 翻译）
-                                showToast(data.message, 'success', 2000);
+
+                                // ---- 其他成功消息（释放、重置等） ----
+                                showToast(msg, 'success', 2000);
                                 scanInput.value = '';
                                 scanInput.focus();
                             } else if (data.type === 'error') {
-                                // 错误消息直接显示，showToast 会尝试翻译
-                                showToast(data.message, 'error', 3000);
+                                // 错误消息翻译（简单处理）
+                                let errMsg = data.message;
+                                if (currentLang !== 'zh') {
+                                    // 尝试替换常见关键词
+                                    errMsg = errMsg.replace(/❌ 主码 /g, '❌ Código ');
+                                    errMsg = errMsg.replace(/已被其他设备锁定，不可重复扫描/g, 'bloqueado por otro dispositivo, no se puede repetir');
+                                    errMsg = errMsg.replace(/❌ 无效子码: /g, '❌ Subcódigo inválido: ');
+                                    errMsg = errMsg.replace(/⏳ 子码 /g, '⏳ Subcódigo ');
+                                    errMsg = errMsg.replace(/已扫描过/g, 'ya escaneada');
+                                    errMsg = errMsg.replace(/不属于当前任务主码/g, 'no pertenece al código actual');
+                                    errMsg = errMsg.replace(/⏳ 主码 /g, '⏳ Código ');
+                                    errMsg = errMsg.replace(/已完成，无需再次添加/g, 'completado, no se puede agregar nuevamente');
+                                    errMsg = errMsg.replace(/❌ 未找到主码: /g, '❌ Código no encontrado: ');
+                                    errMsg = errMsg.replace(/❌ 无效主码: /g, '❌ Código inválido: ');
+                                    errMsg = errMsg.replace(/主码/g, 'código');
+                                }
+                                showToast(errMsg, 'error', 3000);
                                 scanInput.value = '';
                                 scanInput.focus();
                             }
@@ -1058,7 +1087,7 @@
                 saveLocalState();
             }
 
-            // ---- 强制结束（使用自定义 confirm） ----
+            // ---- 强制结束 ----
             async function forceEnd() {
                 if (localMode === 'main') {
                     showToast(t('already_sub'), 'warning');
@@ -1154,8 +1183,8 @@
 
                     globalIdx++;
                     let statusText = '';
-                    if (isTask) statusText = '📋 任务中';
-                    else if (isPending) statusText = '⏳ 待添加';
+                    if (isTask) statusText = '📋 ' + t('in_task');
+                    else if (isPending) statusText = '⏳ ' + t('pending_to_add');
                     else statusText = '';
                     const isActive = isTask && localMode === 'sub';
                     html += `
@@ -1844,7 +1873,6 @@
                 // 初始化语言
                 setLang(currentLang);
 
-                // 更新 UI
                 updateUI();
                 updateStatusBar();
                 renderList();
