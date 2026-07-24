@@ -7,7 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 样式保持不变（与之前相同） */
+        /* 所有样式与之前相同，此处省略以节省篇幅，实际代码包含完整样式 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -237,7 +237,7 @@
             <button class="btn btn-success" id="exportTxtBtn" onclick="window.exportTxt()">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn" onclick="window.exportExcel()">📊 Excel</button>
         </div>
-        <div class="version-tag">v2.0 - 20260724</div>
+        <div class="version-tag">v3.0 - 20260724</div>
     </div>
     <!-- 确认框 -->
     <div class="modal-overlay" id="confirmModal" style="display:none;">
@@ -265,7 +265,7 @@
     <script>
         // ============================================================
         // 版本标识
-        console.log('📦 出库核对 v2.0 - 20260724');
+        console.log('📦 出库核对 v3.0 - 20260724');
         // ============================================================
 
         // ---- 语言包 ----
@@ -563,6 +563,9 @@
         var addressStatusMsg = document.getElementById('addressStatusMsg');
         var fileInfo = document.getElementById('fileInfo');
         var fileInput = document.getElementById('fileInput');
+        // 按钮
+        var endMainBtn = document.getElementById('endMainBtn');
+        var forceEndBtn = document.getElementById('forceEndBtn');
 
         // ---- 调试面板 ----
         function updateDebug(msg, type) {
@@ -585,16 +588,17 @@
             currentLang = next;
             localStorage.setItem('pda_lang', next);
             updateUI();
+            // 更新切换按钮自身文本
             document.getElementById('langSwitch').textContent = next === 'zh' ? 'Español' : '中文';
         };
 
-        // ---- 更新所有 UI 文本（关键修复） ----
+        // ---- 更新所有 UI 文本 ----
         function updateUI() {
             // 1. 使用 data-i18n 更新所有带该属性的元素
             document.querySelectorAll('[data-i18n]').forEach(function(el) {
                 el.textContent = t(el.getAttribute('data-i18n'));
             });
-            // 2. 显式更新所有关键元素（确保覆盖）
+            // 2. 显式更新所有关键元素
             document.getElementById('pageTitle').textContent = t('pageTitle');
             document.getElementById('lblOperator').textContent = t('operator');
             document.getElementById('lblVehicle').textContent = t('vehicle');
@@ -637,18 +641,17 @@
             document.getElementById('confirmOkBtn').textContent = t('confirm_ok');
             document.getElementById('confirmCancelBtn').textContent = t('confirm_cancel');
             document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
-            // 连接状态
+            // 动态状态
             updateConnectionStatus();
-            // 模式、任务等
             updateModeDisplay();
             updateTaskDisplay();
             updatePendingDisplay();
             updateFileInfo();
             updateFilterButtonText();
-            // 重新渲染清单（含动态文本）
+            // 重新渲染清单
             renderList();
             updateStatusBar();
-            // 语言切换按钮
+            // 切换按钮文本
             document.getElementById('langSwitch').textContent = currentLang === 'zh' ? 'Español' : '中文';
         }
 
@@ -755,13 +758,17 @@
             return filtered;
         }
 
-        // ---- 更新状态栏 ----
+        // ---- 更新状态栏（包含按钮禁用状态） ----
         function updateStatusBar() {
             modeDisplay.textContent = localMode === 'main' ? t('main_mode') : t('sub_mode');
             taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : t('none');
             pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : t('none');
             var stats = getTaskStats();
             mySubProgress.textContent = stats.scanned + '/' + stats.total;
+
+            // 更新按钮禁用状态
+            endMainBtn.disabled = (localMode === 'sub' || pendingKeys.length === 0);
+            forceEndBtn.disabled = (localMode === 'main' || taskKeys.length === 0);
 
             var global = getGlobalStats();
             globalMainCount.textContent = global.totalMain;
@@ -1727,7 +1734,7 @@
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 页面初始化... (v2.0)');
+            console.log('🚀 页面初始化... (v3.0)');
             loadLocalState();
             console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
