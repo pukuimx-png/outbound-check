@@ -1,20 +1,17 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>出库核对 - PDA</title>
+    <title>Verificación de Salida - PDA</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 样式与之前完全相同，此处省略以节省篇幅，实际部署包含完整样式 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         h1 { font-size: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         h1 small { font-size: 12px; font-weight: normal; color: #64748b; }
-        .lang-switch { background: #e2e8f0; border: none; border-radius: 30px; padding: 4px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .lang-switch:active { transform: scale(0.95); }
         .status-bar { background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
         .status-row { padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
         .status-row.identity { background: #dbeafe; color: #1e293b; font-weight: 600; font-size: 16px; }
@@ -141,301 +138,136 @@
 <body>
     <div class="app" id="app">
         <h1>
-            <span id="pageTitle" data-i18n="pageTitle">📦 出库核对</span>
-            <small id="connectionStatus" data-i18n="disconnected">● 未连接</small>
-            <button class="lang-switch" id="langSwitch">Español</button>
+            📦 Verificación de Salida
+            <small id="connectionStatus">● Desconectado</small>
         </h1>
         <div id="debugPanel">
-            <div><span class="info">🔍 调试信息</span></div>
-            <div id="debugContent">等待连接...</div>
+            <div><span class="info">🔍 Debug</span></div>
+            <div id="debugContent">Esperando conexión...</div>
         </div>
-        <button class="force-connect-btn" id="forceConnectBtn">🔌 强制连接 WebSocket</button>
+        <button class="force-connect-btn" id="forceConnectBtn">🔌 Forzar conexión WebSocket</button>
         <div class="status-bar">
             <div class="status-row identity">
-                <span class="operator-info"><span class="label" id="lblOperator" data-i18n="operator">扫描员:</span> <span id="operatorDisplay">-</span></span>
-                <span class="operator-info"><span class="label" id="lblVehicle" data-i18n="vehicle">车牌:</span> <span id="vehicleDisplay">-</span></span>
-                <button class="change-identity-btn" id="changeIdentityBtn">🔄 更换身份</button>
+                <span class="operator-info"><span class="label">Operador:</span> <span id="operatorDisplay">-</span></span>
+                <span class="operator-info"><span class="label">Matrícula:</span> <span id="vehicleDisplay">-</span></span>
+                <button class="change-identity-btn" id="changeIdentityBtn">🔄 Cambio operador</button>
             </div>
             <div class="status-row progress">
-                <span><span class="label" id="lblMode" data-i18n="mode">本机模式:</span> <span id="modeDisplay">主码</span></span>
-                <span><span class="label" id="lblTask" data-i18n="task">当前任务:</span> <span id="taskKeysDisplay">无</span></span>
-                <span><span class="label" id="lblPending" data-i18n="pending">待添加:</span> <span id="pendingDisplay">无</span></span>
-                <span><span class="label" id="lblScanned" data-i18n="scanned">已扫:</span> <span id="mySubProgress">0/0</span></span>
+                <span><span class="label">Modo local:</span> <span id="modeDisplay">Código principal</span></span>
+                <span><span class="label">Tarea actual:</span> <span id="taskKeysDisplay">No</span></span>
+                <span><span class="label">Pendientes:</span> <span id="pendingDisplay">No</span></span>
+                <span><span class="label">Escaneado:</span> <span id="mySubProgress">0/0</span></span>
             </div>
         </div>
         <div class="selected-addresses" id="selectedAddressesDisplay" style="display:none;">
-            <span id="lblSelectedAddresses" data-i18n="selected_addresses">📍 已选地址：</span>
+            <span>📍 Direcciones seleccionadas:</span>
             <span id="addrTags"></span>
-            <button class="change-btn" id="changeAddressBtn">更改</button>
+            <button class="change-btn" id="changeAddressBtn">Cambiar</button>
         </div>
         <div class="global-stats-wrapper">
             <div class="global-stats-header" id="globalStatsToggle">
-                <span id="lblGlobalStats" data-i18n="global_stats">📊 全局统计</span>
+                <span>📊 Estadísticas globales</span>
                 <span class="toggle-icon" id="globalStatsIcon">▼</span>
             </div>
             <div class="global-stats-content" id="globalStatsContent">
-                <span><span class="label" id="lblTotalMain" data-i18n="total_main">📦 总主码:</span> <span class="value" id="globalMainCount">0</span></span>
-                <span><span class="label" id="lblTotalBox" data-i18n="total_box">📦 总箱数:</span> <span class="value" id="globalTotalBox">0</span></span>
-                <span><span class="label" id="lblCompletedMain" data-i18n="completed_main">✅ 已扫主码:</span> <span class="value-fraction" id="globalScanned">0/0</span></span>
-                <span><span class="label" id="lblUnscannedSub" data-i18n="unscanned_sub">⬜ 未扫子码/箱数:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
+                <span><span class="label">📦 Total Códigos:</span> <span class="value" id="globalMainCount">0</span></span>
+                <span><span class="label">📦 Total Cajas:</span> <span class="value" id="globalTotalBox">0</span></span>
+                <span><span class="label">✅ Códigos escaneados:</span> <span class="value-fraction" id="globalScanned">0/0</span></span>
+                <span><span class="label">⬜ Subcajas no escaneadas:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
             </div>
         </div>
         <div class="address-selector" id="addressSelector">
             <div class="title" id="addressToggle">
-                <span id="lblDeliveryAddress" data-i18n="delivery_address">📍 派送地址</span>
-                <span class="count"><span id="lblSelectedCount" data-i18n="selected_count">已选</span> <span id="inlineSelectedCount">0</span> <span id="lblAddrUnit" data-i18n="addr_unit">个</span></span>
+                <span>📍 Dirección de entrega</span>
+                <span class="count">Seleccionados <span id="inlineSelectedCount">0</span></span>
                 <span class="toggle-icon" id="addressIcon">▼</span>
             </div>
             <div class="body" id="addressBody">
                 <div class="address-grid" id="addressGrid"></div>
-                <button class="btn btn-primary confirm-address-btn" id="inlineConfirmAddress">确认地址</button>
+                <button class="btn btn-primary confirm-address-btn" id="inlineConfirmAddress">Confirmar dirección</button>
                 <div class="status-msg" id="addressStatusMsg"></div>
             </div>
         </div>
         <div class="upload-zone desktop-only" id="uploadZone">
             <span style="font-size:28px;">📂</span>
-            <p id="lblUploadPrompt" data-i18n="upload_prompt">点击上传出库表 (.xlsx/.xls)</p>
+            <p>Haga clic para cargar tabla de salida (.xlsx/.xls)</p>
             <input type="file" id="fileInput" accept=".xlsx,.xls">
-            <div class="file-info" id="fileInfo"><span id="lblNotUploaded" data-i18n="not_uploaded">未上传</span></div>
+            <div class="file-info" id="fileInfo">No subido</div>
         </div>
         <div class="scan-input-group">
-            <input type="text" id="scanInput" placeholder="扫描条码..." autofocus>
+            <input type="text" id="scanInput" placeholder="Escanear código de QR..." autofocus>
             <button class="btn btn-primary" id="scanBtn">↵</button>
         </div>
         <div class="flex-row">
-            <button class="btn btn-warning" id="endMainBtn" data-i18n="end_main">✅ 结束主码</button>
-            <button class="btn btn-danger" id="forceEndBtn" data-i18n="force_end">⏹ 强制结束</button>
-            <button class="btn btn-outline" id="resetBatchBtn" data-i18n="reset_my_keys">🔄 重置我的主码</button>
-            <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn" data-i18n="show_all">显示全部</button>
+            <button class="btn btn-warning" id="endMainBtn">✅ Finalizar código</button>
+            <button class="btn btn-danger" id="forceEndBtn">⏹ Forzar finalización</button>
+            <button class="btn btn-outline" id="resetBatchBtn">🔄 Restablecer mis códigos</button>
+            <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn">Mostrar todo</button>
         </div>
         <div class="reset-collapse-wrapper">
             <div class="reset-collapse-header" id="resetCollapseToggle">
-                <span id="lblAdvanced" data-i18n="advanced">⚙️ 高级操作</span>
+                <span>⚙️ Operaciones avanzadas</span>
                 <span class="arrow" id="resetCollapseArrow">▶</span>
             </div>
             <div class="reset-collapse-body" id="resetCollapseBody">
-                <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;" data-i18n="reset_all">🔁 全部重置（清除所有数据）</button>
+                <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;">🔁 Restablecer todo (borrar todos los datos)</button>
             </div>
         </div>
         <div class="list-container" id="listContainer">
             <div id="listBody" style="max-height:45vh;overflow-y:auto;"></div>
         </div>
         <div style="margin-top:10px;display:flex;gap:6px;">
-            <button class="btn btn-success" id="exportTxtBtn" data-i18n="export_txt">📄 TXT</button>
-            <button class="btn btn-primary" id="exportExcelBtn" data-i18n="export_excel">📊 Excel</button>
+            <button class="btn btn-success" id="exportTxtBtn">📄 TXT</button>
+            <button class="btn btn-primary" id="exportExcelBtn">📊 Excel</button>
         </div>
-        <div class="version-tag">v4.1 - 20260725</div>
+        <div class="version-tag">v5.0 - 20260725</div>
     </div>
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
-            <h2 id="confirmTitle">⚠️ 确认</h2>
+            <h2 id="confirmTitle">⚠️ Confirmar</h2>
             <p id="confirmMessage" style="white-space:pre-wrap; word-break:break-word;"></p>
-            <button class="btn btn-primary" id="confirmOkBtn">确定</button>
-            <button class="btn btn-cancel" id="confirmCancelBtn">取消</button>
+            <button class="btn btn-primary" id="confirmOkBtn">Aceptar</button>
+            <button class="btn btn-cancel" id="confirmCancelBtn">Cancelar</button>
         </div>
     </div>
     <div class="modal-overlay" id="operatorModal" style="display:none;">
         <div class="modal">
-            <h2 id="modalTitle" data-i18n="auth_title">🔐 身份验证</h2>
-            <label id="lblOperatorName" data-i18n="operator_name">扫描员姓名</label>
-            <input type="text" id="operatorInput" placeholder="请输入姓名" autofocus>
-            <label id="lblVehiclePlate" data-i18n="vehicle_plate">车牌号</label>
-            <input type="text" id="vehicleInput" placeholder="请输入车牌号">
-            <button class="btn btn-primary" id="confirmOperatorBtn">确认</button>
-            <button class="btn btn-cancel" id="cancelOperatorBtn">取消</button>
+            <h2 id="modalTitle">🔐 Autenticación</h2>
+            <label id="lblOperatorName">Nombre del operador</label>
+            <input type="text" id="operatorInput" placeholder="Nombre del operador" autofocus>
+            <label id="lblVehiclePlate">Matrícula</label>
+            <input type="text" id="vehicleInput" placeholder="Matrícula">
+            <button class="btn btn-primary" id="confirmOperatorBtn">Confirmar</button>
+            <button class="btn btn-cancel" id="cancelOperatorBtn">Cancelar</button>
         </div>
     </div>
     <div class="toast" id="toast"></div>
 
     <script>
         // ============================================================
-        // 版本 v4.1 - 修复 PDA 按钮问题（改用 addEventListener + touchstart）
+        // v5.0 - Only Spanish, fixed file upload, 90ms debounce
         // ============================================================
-        console.log('📦 出库核对 v4.1 - 20260725');
+        console.log('📦 Verificación de Salida v5.0 - 20260725');
 
-        // ---- 语言包（完整） ----
+        // ---- 语言文本（全部西语） ----
         var LANG = {
-            zh: {
-                pageTitle: '📦 出库核对',
-                connection: '● 已连接',
-                disconnected: '● 未连接',
-                operator: '扫描员:',
-                vehicle: '车牌:',
-                change_identity: '🔄 更换身份',
-                mode: '本机模式:',
-                task: '当前任务:',
-                pending: '待添加:',
-                scanned: '已扫:',
-                selected_addresses: '📍 已选地址：',
-                change: '更改',
-                global_stats: '📊 全局统计',
-                total_main: '📦 总主码:',
-                total_box: '📦 总箱数:',
-                completed_main: '✅ 已扫主码:',
-                unscanned_sub: '⬜ 未扫子码/箱数:',
-                delivery_address: '📍 派送地址',
-                selected_count: '已选',
-                addr_unit: '个',
-                confirm_address: '确认地址',
-                upload_prompt: '点击上传出库表 (.xlsx/.xls)',
-                not_uploaded: '未上传',
-                end_main: '✅ 结束主码',
-                force_end: '⏹ 强制结束',
-                reset_my_keys: '🔄 重置我的主码',
-                show_all: '显示全部',
-                show_done: '📂 隐藏已完成扫描列表',
-                show_undone: '📂 显示未扫描列表',
-                advanced: '⚙️ 高级操作',
-                reset_all: '🔁 全部重置（清除所有数据）',
-                no_data: '请上传文件或等待数据同步',
-                export_txt: '📄 TXT',
-                export_excel: '📊 Excel',
-                auth_title: '🔐 身份验证',
-                operator_name: '扫描员姓名',
-                vehicle_plate: '车牌号',
-                operator_name_placeholder: '请输入姓名',
-                vehicle_plate_placeholder: '请输入车牌号',
-                confirm: '确认',
-                cancel: '取消',
-                main_mode: '主码',
-                sub_mode: '子码',
-                none: '无',
-                in_task: '任务中',
-                pending_to_add: '待添加',
-                completed: '完成',
-                scanned_complete: '🎉 当前任务所有子码扫描完成！自动切回主码模式',
-                task_invalid: '🔄 您的任务已失效，已切回主码模式',
-                connected: '✅ 已连接到服务器',
-                disconnected_msg: '⚠️ 连接断开，尝试重连...',
-                identity_updated: '✅ 身份已更新',
-                switch_sub: '🔁 已切换至子码模式，当前任务: ',
-                force_end_msg: '⏹ 已强制结束，剩余 ',
-                force_end_sub: ' 个子码未扫，可后续补扫',
-                release_keys: '🔄 已释放主码: ',
-                reset_all_msg: '🔁 已重置所有扫描记录',
-                batch_recorded: '📦 已记录批次: ',
-                patch_scan: '📦 补扫主码: ',
-                remaining_boxes: ' 箱未扫',
-                already_added: '⏳ 主码 {key} 已在待添加列表中',
-                not_belong: '⚠️ 主码 {key} 不属于当前选中的地址',
-                no_pending: '您还没有添加任何主码',
-                already_sub: '已经是子码模式',
-                no_task: '没有任务需要结束',
-                task_complete: '任务已全部完成，无需强制结束',
-                no_keys_to_reset: '您没有主码需要重置',
-                server_disconnected: '❌ 服务器未连接',
-                confirm_release: '确定释放所有主码吗？\n将释放: ',
-                confirm_reset_all: '确定重置所有扫描记录吗？（将清除所有主码和扫描状态）',
-                no_address: '没有收件人信息，无法选择',
-                upload_first: '请先上传文件',
-                parsed_info: '✅ 已解析: ',
-                rows_info: ' 行，',
-                recipients_info: ' 个收件人',
-                no_data_parsed: '未解析到有效数据',
-                no_recipient: '📍 已识别 {count} 个收件人地址',
-                no_recipient_found: '⚠️ 未找到收件人地址信息',
-                waiting_upload: '⏳ 等待连接后上传数据...',
-                file_upload_error: '❌ 解析失败: ',
-                invalid_scan: '请输入条码',
-                server_error: '❌ 服务器未连接',
-                main_not_found: '❌ 未找到主码: ',
-                main_completed: '⏳ 主码 {key} 已完成，无需再次添加',
-                main_locked: '❌ 主码 {key} 已被其他设备锁定，不可重复扫描',
-                main_added: '✅ 已添加主码: ',
-                main_patch: '✅ 可补扫主码: ',
-                patch_remaining: ' (剩余 {remaining} 箱未扫)',
-                sub_invalid: '❌ 无效子码: ',
-                sub_not_belong: '❌ 子码 {code} 不属于当前任务主码',
-                sub_already_scanned: '⏳ 子码 {code} 已扫描过',
-                sub_scanned: '✅ 已扫描: ',
-                sub_progress: ' ({scanned}/{total})',
-                address_selected: '✅ 已选择 {count} 个地址，清单已过滤',
-                address_all: '已切换为显示全部数据',
-                no_delivery_address: '📭 暂无派送地址，点击下方按钮显示全部数据',
-                current_all: '当前显示全部数据',
-                confirmed_addresses: '✅ 已选 {count} 个地址，点击“更改地址”可重新选择',
-                please_select_address: '请至少选择一个地址',
-                address_changed: '已切换为显示全部数据',
-                no_delivery_info: '没有收件人信息，无法选择',
-                confirm_release_all: '确定释放所有主码吗？\n将释放: ',
-                box_singular: '箱',
-                box_plural: '箱',
-                force_end_confirm: '确定强制结束吗？\n剩余 {remaining} 个子码未扫，任务将保留以便补扫。',
-                confirm_ok: '确定',
-                confirm_cancel: '取消',
-                scan_placeholder: '扫描条码...',
-                // Excel 导出专用
-                excel_operator: '扫描员Escaneador:',
-                excel_vehicle: '车牌Placa:',
-                excel_date: '导出日期Fecha:',
-                excel_address: '地址Direccion de entrega:',
-                excel_header_num: '#',
-                excel_header_type: '分组类型/Tipo',
-                excel_header_key: '分组Key/Guia',
-                excel_header_subno: '子项序号/No.',
-                excel_header_code: '子项条码/Codigo',
-                excel_header_scanned: '已扫描/Escaneado',
-                excel_header_boxes: '箱数/Cajas',
-                excel_header_tarima: '卡板/Tarima',
-                excel_fba: 'FBA货件',
-                excel_custom: '自定义',
-                excel_total_boxes: '共{count}箱/Total {count} {caja}',
-                excel_yes: '是/Si',
-                excel_no: '否/No',
-                excel_tarima_prefix: 'Tarima',
-            },
             es: {
-                pageTitle: '📦 Verificación de Salida',
+                // 所有界面文本已硬编码在 HTML 中，此处仅用于动态消息
                 connection: '● Conectado',
                 disconnected: '● Desconectado',
-                operator: 'Operador:',
-                vehicle: 'Matrícula:',
-                change_identity: '🔄 Cambio operador',
-                mode: 'Modo local:',
-                task: 'Tarea actual:',
-                pending: 'Pendientes:',
-                scanned: 'Escaneado:',
-                selected_addresses: '📍 Direcciones seleccionadas:',
-                change: 'Cambiar',
-                global_stats: '📊 Estadísticas globales',
-                total_main: '📦 Total Códigos:',
-                total_box: '📦 Total Cajas:',
-                completed_main: '✅ Envio escaneados:',
-                unscanned_sub: '⬜ Subcajas no escaneadas:',
-                delivery_address: '📍 Dirección de entrega',
-                selected_count: 'Seleccionados',
-                addr_unit: '',
-                confirm_address: 'Confirmar dirección',
-                upload_prompt: 'Haga clic para cargar tabla de salida (.xlsx/.xls)',
-                not_uploaded: 'No subido',
-                end_main: '✅ Finalizar código',
-                force_end: '⏹ Forzar finalización',
-                reset_my_keys: '🔄 Restablecer mis códigos',
-                show_all: 'Mostrar todo',
-                show_done: '📂 Ocultar lista escaneada',
-                show_undone: '📂 Mostrar lista no escaneada',
-                advanced: '⚙️ Operaciones avanzadas',
-                reset_all: '🔁 Restablecer todo (borrar todos los datos)',
-                no_data: 'Cargue un archivo o espere sincronización',
-                export_txt: '📄 TXT',
-                export_excel: '📊 Excel',
-                auth_title: '🔐 Autenticación',
-                operator_name: 'Nombre del operador',
-                vehicle_plate: 'Matrícula',
-                operator_name_placeholder: 'Nombre del operador',
-                vehicle_plate_placeholder: 'Matrícula',
-                confirm: 'Confirmar',
-                cancel: 'Cancelar',
-                main_mode: 'Código principal',
-                sub_mode: 'Subcódigo',
-                none: 'No',
-                in_task: 'En tarea',
-                pending_to_add: 'Pendiente',
-                completed: 'Completado',
-                scanned_complete: '🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código',
-                task_invalid: '🔄 Tarea inválida, cambiando a modo código',
                 connected: '✅ Conectado al servidor',
                 disconnected_msg: '⚠️ Desconectado, reconectando...',
+                invalid_scan: 'Ingrese un código de barras',
+                server_error: '❌ Servidor no conectado',
+                already_added: '⏳ Código {key} ya está en la lista pendiente',
+                not_belong: '⚠️ Código {key} no pertenece a la dirección seleccionada',
+                no_pending: 'No ha agregado ningún código',
+                already_sub: 'Ya está en modo subcódigo',
+                no_task: 'No hay tarea para finalizar',
+                task_complete: 'Tarea completada, no es necesario forzar',
+                no_keys_to_reset: 'No tiene códigos para restablecer',
+                confirm_release: '¿Liberar todos los códigos?\nSe liberarán: ',
+                confirm_reset_all: '¿Restablecer todos los registros? (Se borrarán todos los códigos y estados)',
                 identity_updated: '✅ Identidad actualizada',
                 switch_sub: '🔁 Cambiado a modo subcódigo, tarea: ',
                 force_end_msg: '⏹ Finalización forzada, restan ',
@@ -445,17 +277,15 @@
                 batch_recorded: '📦 Lote registrado: ',
                 patch_scan: '📦 Reponer código: ',
                 remaining_boxes: ' cajas restantes',
-                already_added: '⏳ Código {key} ya está en la lista pendiente',
-                not_belong: '⚠️ Código {key} no pertenece a la dirección seleccionada',
-                no_pending: 'No ha agregado ningún código',
-                already_sub: 'Ya está en modo subcódigo',
-                no_task: 'No hay tarea para finalizar',
-                task_complete: 'Tarea completada, no es necesario forzar',
-                no_keys_to_reset: 'No tiene códigos para restablecer',
-                server_disconnected: '❌ Servidor no conectado',
-                confirm_release: '¿Liberar todos los códigos?\nSe liberarán: ',
-                confirm_reset_all: '¿Restablecer todos los registros? (Se borrarán todos los códigos y estados)',
-                no_address: 'Sin información de destinatario, no se puede seleccionar',
+                main_added: 'Agregar Envio: ',
+                sub_scanned: 'Escaneado ',
+                sub_progress: ' ({scanned}/{total})',
+                address_selected: '✅ Se seleccionaron {count} direcciones, lista filtrada',
+                address_all: 'Cambiado a mostrar todos los datos',
+                no_delivery_address: '📭 Sin direcciones de entrega, haga clic para mostrar todos los datos',
+                current_all: 'Mostrando todos los datos',
+                confirmed_addresses: '✅ Se seleccionaron {count} direcciones, haga clic en "Cambiar" para modificar',
+                please_select_address: 'Seleccione al menos una dirección',
                 upload_first: 'Primero cargue un archivo',
                 parsed_info: '✅ Archivo parseado: ',
                 rows_info: ' filas, ',
@@ -465,35 +295,15 @@
                 no_recipient_found: '⚠️ No se encontró información de destinatario',
                 waiting_upload: '⏳ Esperando conexión para subir datos...',
                 file_upload_error: '❌ Error al parsear: ',
-                invalid_scan: 'Ingrese un código de barras',
-                server_error: '❌ Servidor no conectado',
-                main_not_found: '❌ Código no encontrado: ',
                 main_completed: '⏳ Código {key} completado, no se puede agregar nuevamente',
                 main_locked: '❌ Código {key} bloqueado por otro dispositivo',
-                main_added: 'Agregar Envio: ',
-                main_patch: '✅ Código para reponer: ',
-                patch_remaining: ' ({remaining} cajas restantes)',
-                sub_invalid: '❌ Subcódigo inválido: ',
+                main_not_found: '❌ Código no encontrado: ',
                 sub_not_belong: '❌ Subcódigo {code} no pertenece a la tarea actual',
                 sub_already_scanned: '⏳ Subcódigo {code} ya escaneada',
-                sub_scanned: 'Escaneado ',
-                sub_progress: ' ({scanned}/{total})',
-                address_selected: '✅ Se seleccionaron {count} direcciones, lista filtrada',
-                address_all: 'Cambiado a mostrar todos los datos',
-                no_delivery_address: '📭 Sin direcciones de entrega, haga clic para mostrar todos los datos',
-                current_all: 'Mostrando todos los datos',
-                confirmed_addresses: '✅ Se seleccionaron {count} direcciones, haga clic en "Cambiar" para modificar',
-                please_select_address: 'Seleccione al menos una dirección',
-                address_changed: 'Cambiado a mostrar todos los datos',
-                no_delivery_info: 'Sin información de destinatario, no se puede seleccionar',
-                confirm_release_all: '¿Liberar todos los códigos?\nSe liberarán: ',
-                box_singular: 'caja',
-                box_plural: 'cajas',
+                task_invalid: '🔄 Tarea inválida, cambiando a modo código',
+                scanned_complete: '🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código',
                 force_end_confirm: '¿Forzar finalización?\nRestan {remaining} subcódigos por escanear, la tarea se conservará para completar.',
-                confirm_ok: 'Aceptar',
-                confirm_cancel: 'Cancelar',
-                scan_placeholder: 'Escanear código de QR',
-                // Excel 导出专用
+                // Excel
                 excel_operator: '扫描员Escaneador:',
                 excel_vehicle: '车牌Placa:',
                 excel_date: '导出日期Fecha:',
@@ -515,11 +325,8 @@
             }
         };
 
-        var currentLang = localStorage.getItem('pda_lang') || 'es';
-        var confirmCallback = null;
-
         function t(key, replacements) {
-            var text = LANG[currentLang][key] || key;
+            var text = LANG.es[key] || key;
             if (replacements) {
                 for (var k in replacements) {
                     text = text.replace(new RegExp('\\{' + k + '\\}', 'g'), replacements[k]);
@@ -529,11 +336,7 @@
         }
 
         function translateBoxCount(count) {
-            if (currentLang === 'zh') {
-                return count + '箱';
-            } else {
-                return count === 1 ? '1 caja' : count + ' cajas';
-            }
+            return count === 1 ? '1 caja' : count + ' cajas';
         }
 
         // ---- 全局状态 ----
@@ -589,12 +392,12 @@
         var endMainBtn = document.getElementById('endMainBtn');
         var forceEndBtn = document.getElementById('forceEndBtn');
         var changeIdentityBtn = document.getElementById('changeIdentityBtn');
-        var langSwitch = document.getElementById('langSwitch');
         var forceConnectBtn = document.getElementById('forceConnectBtn');
         var confirmOkBtn = document.getElementById('confirmOkBtn');
         var confirmCancelBtn = document.getElementById('confirmCancelBtn');
         var confirmOperatorBtn = document.getElementById('confirmOperatorBtn');
         var cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
+        var uploadZone = document.getElementById('uploadZone');
 
         // ---- 调试面板 ----
         function updateDebug(msg, type) {
@@ -611,57 +414,29 @@
             panel.scrollTop = panel.scrollHeight;
         }
 
-        // ---- 语言切换 ----
-        window.toggleLang = function() {
-            var next = currentLang === 'zh' ? 'es' : 'zh';
-            currentLang = next;
-            localStorage.setItem('pda_lang', next);
-            console.log('🌐 切换语言为:', next);
-            updateUI();
-            langSwitch.textContent = next === 'zh' ? 'Español' : '中文';
-        };
+        function updateConnectionStatus() {
+            var connected = connectionStatus.textContent.includes('Conectado');
+            connectionStatus.textContent = connected ? '● Conectado' : '● Desconectado';
+        }
+
+        function updateModeDisplay() {
+            modeDisplay.textContent = (localMode === 'main') ? 'Código principal' : 'Subcódigo';
+        }
+        function updateTaskDisplay() {
+            taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : 'No';
+        }
+        function updatePendingDisplay() {
+            pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : 'No';
+        }
 
         function updateUI() {
-            document.querySelectorAll('[data-i18n]').forEach(function(el) {
-                var key = el.getAttribute('data-i18n');
-                el.textContent = t(key);
-            });
-            document.getElementById('operatorInput').placeholder = t('operator_name_placeholder');
-            document.getElementById('vehicleInput').placeholder = t('vehicle_plate_placeholder');
-            document.getElementById('scanInput').placeholder = t('scan_placeholder');
+            // 所有静态文本已在HTML中写死，无需更新
             updateConnectionStatus();
             updateModeDisplay();
             updateTaskDisplay();
             updatePendingDisplay();
-            updateFileInfo();
-            updateFilterButtonText();
             renderList();
             updateStatusBar();
-            langSwitch.textContent = currentLang === 'zh' ? 'Español' : '中文';
-        }
-
-        function updateConnectionStatus() {
-            var connected = connectionStatus.textContent.includes('已连接') || connectionStatus.textContent.includes('Conectado');
-            connectionStatus.textContent = connected ? t('connection') : t('disconnected');
-        }
-        function updateModeDisplay() {
-            modeDisplay.textContent = (localMode === 'main') ? t('main_mode') : t('sub_mode');
-        }
-        function updateTaskDisplay() {
-            taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : t('none');
-        }
-        function updatePendingDisplay() {
-            pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : t('none');
-        }
-        function updateFileInfo() {
-            if (fileInfo.textContent.includes('未上传') || fileInfo.textContent.includes('No subido')) {
-                fileInfo.innerHTML = '<span id="lblNotUploaded">' + t('not_uploaded') + '</span>';
-            }
-        }
-        function updateFilterButtonText() {
-            var btn = document.getElementById('toggleDoneBtn');
-            var mode = btn.getAttribute('data-filter-mode') || 'all';
-            btn.textContent = mode === 'all' ? t('show_all') : (mode === 'done' ? t('show_done') : t('show_undone'));
         }
 
         // ---- 设备ID ----
@@ -745,9 +520,9 @@
 
         // ---- 更新状态栏 ----
         function updateStatusBar() {
-            modeDisplay.textContent = localMode === 'main' ? t('main_mode') : t('sub_mode');
-            taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : t('none');
-            pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : t('none');
+            modeDisplay.textContent = (localMode === 'main') ? 'Código principal' : 'Subcódigo';
+            taskKeysDisplay.textContent = taskKeys.length ? taskKeys.join(', ') : 'No';
+            pendingDisplay.textContent = pendingKeys.length ? pendingKeys.join(', ') : 'No';
             var stats = getTaskStats();
             mySubProgress.textContent = stats.scanned + '/' + stats.total;
 
@@ -800,7 +575,7 @@
             saveLocalState();
 
             if (localMode === 'sub' && taskKeys.length > 0 && stats.total > 0 && stats.scanned === stats.total) {
-                showToast(t('scanned_complete'), 'success', 3000);
+                showToast('🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código', 'success', 3000);
                 localMode = 'main';
                 taskKeys = [];
                 updateStatusBar();
@@ -808,7 +583,7 @@
             }
         }
 
-        // ---- 自动连续扫描 ----
+        // ---- 自动连续扫描 (90ms) ----
         function triggerAutoScan() {
             var val = scanInput.value.trim();
             if (val.length >= 3) {
@@ -816,7 +591,7 @@
                 scanTimer = setTimeout(function() {
                     var current = scanInput.value.trim();
                     if (current.length >= 3) {
-                        updateDebug('📤 自动扫描触发: ' + current, 'info');
+                        updateDebug('📤 Auto-scan trigger: ' + current, 'info');
                         window.handleScan();
                     }
                 }, 90);
@@ -832,27 +607,27 @@
         window.handleScan = function() {
             var code = scanInput.value.trim();
             if (!code) {
-                showToast(t('invalid_scan'), 'warning');
+                showToast('Ingrese un código de barras', 'warning');
                 return;
             }
             scanInput.value = '';
             var extracted = extractCodeFromInput(code);
-            console.log('📥 原始输入:', code, '→ 提取后:', extracted);
+            console.log('📥 Original:', code, '→ Extraído:', extracted);
             if (!ws || ws.readyState !== WebSocket.OPEN) {
-                showToast(t('server_error'), 'error');
+                showToast('❌ Servidor no conectado', 'error');
                 setTimeout(function() { scanInput.focus(); }, 100);
                 return;
             }
             var trimmed = extracted;
             if (localMode === 'main') {
                 if (pendingKeys.includes(trimmed)) {
-                    showToast(t('already_added', { key: trimmed }), 'warning', 2000);
+                    showToast('⏳ Código ' + trimmed + ' ya está en la lista pendiente', 'warning', 2000);
                     setTimeout(function() { scanInput.focus(); }, 100);
                     return;
                 }
                 var filtered = getFilteredMainKeys();
                 if (filtered.length > 0 && !filtered.includes(trimmed)) {
-                    showToast(t('not_belong', { key: trimmed }), 'warning', 3000);
+                    showToast('⚠️ Código ' + trimmed + ' no pertenece a la dirección seleccionada', 'warning', 3000);
                     setTimeout(function() { scanInput.focus(); }, 100);
                     return;
                 }
@@ -872,7 +647,7 @@
                     }
                 }
                 if (!belongs) {
-                    showToast(t('sub_not_belong', { code: trimmed }), 'error', 3000);
+                    showToast('❌ Subcódigo ' + trimmed + ' no pertenece a la tarea actual', 'error', 3000);
                     setTimeout(function() { scanInput.focus(); }, 100);
                     return;
                 }
@@ -901,13 +676,13 @@
                 var protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
                 var host = window.location.host;
                 var WS_URL = protocol + host;
-                updateDebug('🔌 正在连接 WebSocket: ' + WS_URL, 'info');
+                updateDebug('🔌 Conectando WebSocket: ' + WS_URL, 'info');
                 ws = new WebSocket(WS_URL);
                 ws.onopen = function() {
-                    connectionStatus.textContent = t('connection');
+                    connectionStatus.textContent = '● Conectado';
                     connectionStatus.style.color = '#16a34a';
-                    updateDebug('✅ WebSocket 连接成功！', 'success');
-                    showToast(t('connected'), 'success', 2000);
+                    updateDebug('✅ WebSocket conectado!', 'success');
+                    showToast('✅ Conectado al servidor', 'success', 2000);
                     if (allGroups.length > 0 && allRecipients.length > 0) {
                         ws.send(JSON.stringify({ type: 'init', groups: allGroups, recipients: allRecipients, deviceId: deviceId }));
                     }
@@ -916,14 +691,14 @@
                 ws.onmessage = function(event) {
                     try {
                         var data = JSON.parse(event.data);
-                        console.log('📨 收到服务器消息:', data);
+                        console.log('📨 Mensaje recibido:', data);
                         if (data.type === 'state') {
                             state = data.state;
                             taskKeys = taskKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
                             pendingKeys = pendingKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
                             if (localMode === 'sub' && taskKeys.length === 0) {
                                 localMode = 'main';
-                                showToast(t('task_invalid'), 'warning', 2000);
+                                showToast('🔄 Tarea inválida, cambiando a modo código', 'warning', 2000);
                             }
                             renderList();
                             updateStatusBar();
@@ -944,12 +719,12 @@
                             setTimeout(function() { scanInput.focus(); }, 100);
                         } else if (data.type === 'success') {
                             var msg = data.message;
-                            console.log('🔍 成功消息内容:', msg);
+                            console.log('🔍 Mensaje de éxito:', msg);
                             var patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
                             if (patchMatch) {
                                 var patchKey = patchMatch[1];
                                 var remaining = parseInt(patchMatch[2]);
-                                showToast(t('patch_scan') + patchKey + ' (剩余 ' + remaining + ' 箱未扫)', 'info', 3000);
+                                showToast('📦 Reponer código: ' + patchKey + ' (cajas restantes: ' + remaining + ')', 'info', 3000);
                                 if (!pendingKeys.includes(patchKey)) {
                                     pendingKeys.push(patchKey);
                                     renderList();
@@ -963,14 +738,14 @@
                             if (mainMatch) {
                                 var key = mainMatch[1];
                                 if (isMainCompleted(key)) {
-                                    showToast(t('main_completed', { key: key }), 'warning', 2000);
+                                    showToast('⏳ Código ' + key + ' completado, no se puede agregar nuevamente', 'warning', 2000);
                                     scanInput.value = '';
                                     setTimeout(function() { scanInput.focus(); }, 100);
                                     return;
                                 }
                                 var filtered = getFilteredMainKeys();
                                 if (filtered.length > 0 && !filtered.includes(key)) {
-                                    showToast(t('not_belong', { key: key }), 'warning', 2000);
+                                    showToast('⚠️ Código ' + key + ' no pertenece a la dirección seleccionada', 'warning', 2000);
                                     scanInput.value = '';
                                     setTimeout(function() { scanInput.focus(); }, 100);
                                     return;
@@ -979,7 +754,7 @@
                                     pendingKeys.push(key);
                                     var group = state.groups.find(function(g) { return g.key === key; });
                                     var boxText = group ? translateBoxCount(group.items.length) : '';
-                                    showToast(t('main_added') + key + (boxText ? ' (' + boxText + ')' : ''), 'success', 2000);
+                                    showToast('Agregar Envio: ' + key + (boxText ? ' (' + boxText + ')' : ''), 'success', 2000);
                                     renderList();
                                     updateStatusBar();
                                 }
@@ -1003,7 +778,7 @@
                                 }
                                 renderList();
                                 updateStatusBar();
-                                showToast(t('sub_scanned') + code + ' (' + scanned + '/' + total + ')', 'success', 2000);
+                                showToast('Escaneado ' + code + ' (' + scanned + '/' + total + ')', 'success', 2000);
                                 scanInput.value = '';
                                 setTimeout(function() { scanInput.focus(); }, 100);
                                 return;
@@ -1013,51 +788,49 @@
                             setTimeout(function() { scanInput.focus(); }, 100);
                         } else if (data.type === 'error') {
                             var errMsg = data.message;
-                            if (currentLang !== 'zh') {
-                                errMsg = errMsg.replace(/❌ 主码 /g, '❌ Código ');
-                                errMsg = errMsg.replace(/已被其他设备锁定，不可重复扫描/g, 'bloqueado por otro dispositivo, no se puede repetir');
-                                errMsg = errMsg.replace(/❌ 无效子码: /g, '❌ Subcódigo inválido: ');
-                                errMsg = errMsg.replace(/⏳ 子码 /g, '⏳ Subcódigo ');
-                                errMsg = errMsg.replace(/已扫描过/g, 'ya escaneada');
-                                errMsg = errMsg.replace(/不属于当前任务主码/g, 'no pertenece al código actual');
-                                errMsg = errMsg.replace(/⏳ 主码 /g, '⏳ Código ');
-                                errMsg = errMsg.replace(/已完成，无需再次添加/g, 'completado, no se puede agregar nuevamente');
-                                errMsg = errMsg.replace(/❌ 未找到主码: /g, '❌ Código no encontrado: ');
-                                errMsg = errMsg.replace(/❌ 无效主码: /g, '❌ Código inválido: ');
-                                errMsg = errMsg.replace(/主码/g, 'código');
-                            }
+                            // Simple translations (could be more complete)
+                            errMsg = errMsg.replace(/❌ 主码 /g, '❌ Código ');
+                            errMsg = errMsg.replace(/已被其他设备锁定，不可重复扫描/g, 'bloqueado por otro dispositivo, no se puede repetir');
+                            errMsg = errMsg.replace(/❌ 无效子码: /g, '❌ Subcódigo inválido: ');
+                            errMsg = errMsg.replace(/⏳ 子码 /g, '⏳ Subcódigo ');
+                            errMsg = errMsg.replace(/已扫描过/g, 'ya escaneada');
+                            errMsg = errMsg.replace(/不属于当前任务主码/g, 'no pertenece al código actual');
+                            errMsg = errMsg.replace(/⏳ 主码 /g, '⏳ Código ');
+                            errMsg = errMsg.replace(/已完成，无需再次添加/g, 'completado, no se puede agregar nuevamente');
+                            errMsg = errMsg.replace(/❌ 未找到主码: /g, '❌ Código no encontrado: ');
+                            errMsg = errMsg.replace(/❌ 无效主码: /g, '❌ Código inválido: ');
                             showToast(errMsg, 'error', 3000);
                             scanInput.value = '';
                             setTimeout(function() { scanInput.focus(); }, 100);
                         }
                     } catch (err) {
-                        console.error('❌ 解析消息失败:', err);
+                        console.error('❌ Error parseando mensaje:', err);
                     }
                 };
                 ws.onclose = function(event) {
-                    connectionStatus.textContent = t('disconnected');
+                    connectionStatus.textContent = '● Desconectado';
                     connectionStatus.style.color = '#dc2626';
-                    var reason = event.reason || '无';
-                    updateDebug('⚠️ 连接关闭，代码: ' + event.code + '，原因: ' + reason, 'error');
-                    showToast(t('disconnected_msg'), 'error');
+                    var reason = event.reason || 'sin motivo';
+                    updateDebug('⚠️ Conexión cerrada, código: ' + event.code + ', razón: ' + reason, 'error');
+                    showToast('⚠️ Desconectado, reconectando...', 'error');
                     if (reconnectTimer) clearTimeout(reconnectTimer);
                     reconnectTimer = setTimeout(connectWebSocket, 3000);
                 };
                 ws.onerror = function(err) {
-                    updateDebug('❌ WebSocket 错误: ' + (err.message || '未知错误'), 'error');
-                    console.error('❌ WebSocket错误:', err);
+                    updateDebug('❌ Error WebSocket: ' + (err.message || 'desconocido'), 'error');
+                    console.error('❌ Error WebSocket:', err);
                     ws.close();
                 };
             } catch (err) {
-                updateDebug('❌ 连接失败: ' + err.message, 'error');
-                console.error('❌ 连接失败:', err);
+                updateDebug('❌ Error de conexión: ' + err.message, 'error');
+                console.error('❌ Error de conexión:', err);
                 setTimeout(connectWebSocket, 3000);
             }
         }
 
         window.forceConnect = function() {
             if (ws && ws.readyState === WebSocket.OPEN) {
-                updateDebug('⚠️ 已连接，无需重复操作', 'info');
+                updateDebug('⚠️ Ya conectado', 'info');
                 return;
             }
             if (!operator) {
@@ -1067,7 +840,7 @@
                 localStorage.setItem('vehicle', vehicle);
                 operatorDisplay.textContent = operator;
                 vehicleDisplay.textContent = vehicle;
-                updateDebug('📝 已填入默认身份: PDA / DEV', 'info');
+                updateDebug('📝 Identidad por defecto: PDA / DEV', 'info');
             }
             if (!isInitialized) {
                 isInitialized = true;
@@ -1075,14 +848,14 @@
             connectWebSocket();
         };
 
-        // ---- 结束主码（记录批次，增加地址和创建时间） ----
+        // ---- 结束主码 ----
         window.switchToSubMode = function() {
             if (pendingKeys.length === 0) {
-                showToast(t('no_pending'), 'warning');
+                showToast('No ha agregado ningún código', 'warning');
                 return;
             }
             if (localMode === 'sub') {
-                showToast(t('already_sub'), 'warning');
+                showToast('Ya está en modo subcódigo', 'warning');
                 return;
             }
             var batchName = 'Tarima' + (batches.length + 1);
@@ -1094,13 +867,13 @@
                 addresses: selectedAddresses.slice(),
                 createdAt: new Date().toISOString().slice(0, 10)
             });
-            showToast(t('batch_recorded') + batchName + ' (' + pendingKeys.length + ' 个主码)', 'success', 3000);
+            showToast('📦 Lote registrado: ' + batchName + ' (' + pendingKeys.length + ' códigos)', 'success', 3000);
             taskKeys = pendingKeys.slice();
             pendingKeys = [];
             localMode = 'sub';
             updateStatusBar();
             renderList();
-            showToast(t('switch_sub') + taskKeys.join(', '), 'success', 2000);
+            showToast('🔁 Cambiado a modo subcódigo, tarea: ' + taskKeys.join(', '), 'success', 2000);
             scanInput.focus();
             saveLocalState();
         };
@@ -1108,21 +881,21 @@
         // ---- 强制结束 ----
         window.forceEnd = function() {
             if (localMode === 'main') {
-                showToast(t('already_sub'), 'warning');
+                showToast('Ya está en modo principal', 'warning');
                 return;
             }
             if (taskKeys.length === 0) {
-                showToast(t('no_task'), 'warning');
+                showToast('No hay tarea para finalizar', 'warning');
                 return;
             }
             var stats = getTaskStats();
             if (stats.scanned === stats.total) {
-                showToast(t('task_complete'), 'info', 2000);
+                showToast('Tarea completada, no es necesario forzar', 'info', 2000);
                 return;
             }
-            var msg = t('force_end_confirm', { remaining: stats.total - stats.scanned });
+            var msg = '¿Forzar finalización?\nRestan ' + (stats.total - stats.scanned) + ' subcódigos por escanear, la tarea se conservará para completar.';
             document.getElementById('confirmMessage').textContent = msg;
-            document.getElementById('confirmTitle').textContent = currentLang === 'zh' ? '⚠️ 确认' : '⚠️ Confirmar';
+            document.getElementById('confirmTitle').textContent = '⚠️ Confirmar';
             document.getElementById('confirmModal').style.display = 'flex';
             confirmCallback = function(confirmed) {
                 document.getElementById('confirmModal').style.display = 'none';
@@ -1130,25 +903,33 @@
                     localMode = 'main';
                     updateStatusBar();
                     renderList();
-                    showToast(t('force_end_msg') + (stats.total - stats.scanned) + t('force_end_sub'), 'warning', 4000);
+                    showToast('⏹ Finalización forzada, restan ' + (stats.total - stats.scanned) + ' subcódigos por escanear', 'warning', 4000);
                     scanInput.focus();
                 }
                 confirmCallback = null;
             };
         };
 
+        var confirmCallback = null;
+        window.confirmOk = function() {
+            if (confirmCallback) confirmCallback(true);
+        };
+        window.confirmCancel = function() {
+            if (confirmCallback) confirmCallback(false);
+        };
+
         // ---- 重置我的主码 ----
         window.resetMyKeys = function() {
             var allKeys = Array.from(new Set([].concat(taskKeys, pendingKeys)));
             if (allKeys.length === 0) {
-                showToast(t('no_keys_to_reset'), 'warning');
+                showToast('No tiene códigos para restablecer', 'warning');
                 return;
             }
             if (!ws || ws.readyState !== WebSocket.OPEN) {
-                showToast(t('server_error'), 'error');
+                showToast('❌ Servidor no conectado', 'error');
                 return;
             }
-            var msg = t('confirm_release') + allKeys.join(', ');
+            var msg = '¿Liberar todos los códigos?\nSe liberarán: ' + allKeys.join(', ');
             if (confirm(msg)) {
                 ws.send(JSON.stringify({ type: 'release_keys', keys: allKeys, deviceId: deviceId }));
                 taskKeys = [];
@@ -1156,7 +937,7 @@
                 localMode = 'main';
                 updateStatusBar();
                 renderList();
-                showToast(t('release_keys') + allKeys.join(', '), 'info', 3000);
+                showToast('🔄 Códigos liberados: ' + allKeys.join(', '), 'info', 3000);
                 scanInput.focus();
             }
         };
@@ -1164,10 +945,10 @@
         // ---- 全部重置 ----
         window.resetAll = function() {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
-                showToast(t('server_error'), 'error');
+                showToast('❌ Servidor no conectado', 'error');
                 return;
             }
-            if (confirm(t('confirm_reset_all'))) {
+            if (confirm('¿Restablecer todos los registros? (Se borrarán todos los códigos y estados)')) {
                 ws.send(JSON.stringify({ type: 'reset_all' }));
                 taskKeys = [];
                 pendingKeys = [];
@@ -1176,14 +957,6 @@
                 updateStatusBar();
                 saveLocalState();
             }
-        };
-
-        // ---- 确认框 ----
-        window.confirmOk = function() {
-            if (confirmCallback) confirmCallback(true);
-        };
-        window.confirmCancel = function() {
-            if (confirmCallback) confirmCallback(false);
         };
 
         // ---- 折叠切换 ----
@@ -1207,6 +980,9 @@
             var idx = modes.indexOf(filterMode);
             filterMode = modes[(idx + 1) % 3];
             document.getElementById('toggleDoneBtn').setAttribute('data-filter-mode', filterMode);
+            // Update button text
+            var btn = document.getElementById('toggleDoneBtn');
+            btn.textContent = filterMode === 'all' ? 'Mostrar todo' : (filterMode === 'done' ? 'Ocultar escaneados' : 'Mostrar no escaneados');
             saveLocalState();
             renderList();
             updateStatusBar();
@@ -1216,7 +992,7 @@
         function renderList() {
             var groups = state.groups;
             if (groups.length === 0) {
-                listBody.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + t('no_data') + '</div>';
+                listBody.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;">Cargue un archivo o espere sincronización</div>';
                 return;
             }
             var filteredKeys = getFilteredMainKeys();
@@ -1232,7 +1008,7 @@
                 var isTask = taskSet.has(g.key);
                 var isPending = pendingSet.has(g.key);
                 var allScanned = g.items.every(function(item) { return state.scanStatus[item.code]; });
-                var typeLabel = g.type === 'fba' ? 'FBA' : '自定义';
+                var typeLabel = g.type === 'fba' ? 'FBA' : 'Custom';
                 var typeClass = g.type === 'fba' ? 'fba' : 'custom';
                 var boxText = translateBoxCount(g.items.length);
 
@@ -1241,14 +1017,13 @@
 
                 globalIdx++;
                 var statusText = '';
-                if (isTask) statusText = '📋 ' + t('in_task');
-                else if (isPending) statusText = '⏳ ' + t('pending_to_add');
-                else statusText = '';
-                var completedText = t('completed');
+                if (isTask) statusText = '📋 En tarea';
+                else if (isPending) statusText = '⏳ Pendiente';
+                var completedText = allScanned ? '✅ Completado' : '';
                 var isActive = isTask && localMode === 'sub';
                 html += '<div class="list-item group-header ' + (isActive ? 'active' : '') + '">';
                 html += '<span>' + globalIdx + '</span>';
-                html += '<span class="code">' + g.key + ' <span class="badge">' + boxText + '</span> ' + statusText + (allScanned ? ' ✅ ' + completedText : '') + '</span>';
+                html += '<span class="code">' + g.key + ' <span class="badge">' + boxText + '</span> ' + statusText + ' ' + completedText + '</span>';
                 html += '<span class="badge ' + typeClass + '">' + typeLabel + '</span>';
                 html += '<span class="status">' + (allScanned ? '✅' : '⬜') + '</span>';
                 html += '</div>';
@@ -1265,14 +1040,14 @@
                     html += '<div class="list-item ' + (scanned ? 'scanned' : '') + (isActiveItem ? ' active' : '') + '">';
                     html += '<span>' + globalIdx + '</span>';
                     html += '<span>' + displayCode + '</span>';
-                    html += '<span class="badge" style="opacity:0.5;">' + t('sub_mode') + '</span>';
+                    html += '<span class="badge" style="opacity:0.5;">Subcódigo</span>';
                     html += '<span class="status">' + (scanned ? '✅' : '⬜') + '</span>';
                     html += '</div>';
                 }
             }
             if (html === '') {
-                var msg = filterMode === 'done' ? '暂无已完成的主码' :
-                           filterMode === 'undone' ? '暂无未完成的主码' : '没有匹配的分组';
+                var msg = filterMode === 'done' ? 'No hay códigos completados' :
+                           filterMode === 'undone' ? 'No hay códigos pendientes' : 'No hay coincidencias';
                 html = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + msg + '</div>';
             }
             listBody.innerHTML = html;
@@ -1347,7 +1122,7 @@
                 statusCol = null,
                 recipientCol = null;
             var headers = Object.keys(rows[0] || {});
-            console.log('📋 检测到的列名:', headers);
+            console.log('📋 Columnas detectadas:', headers);
 
             var excludeKeywords = ['tax', '税号', '税务'];
 
@@ -1397,7 +1172,7 @@
                 if (clean.includes('Status') || clean.includes('状态')) statusCol = h;
             }
             if (!kCol && !asCol) {
-                showToast(t('no_data_parsed'), 'error');
+                showToast('No se encontró columna K o AS', 'error');
                 return null;
             }
 
@@ -1418,17 +1193,17 @@
                     recipient: recipient
                 });
             }
-            console.log('📌 提取到的收件人列表:', Array.from(recipientSet));
+            console.log('📌 Destinatarios extraídos:', Array.from(recipientSet));
             return { rows: parsedRows, recipients: Array.from(recipientSet) };
         }
 
         // ---- 地址选择器 ----
         function renderAddressSelector(recipients, rows, readonly) {
             if (!recipients || recipients.length === 0) {
-                addressGrid.innerHTML = '<div class="address-empty-tip">' + t('no_delivery_address') + '</div>';
+                addressGrid.innerHTML = '<div class="address-empty-tip">📭 Sin direcciones de entrega, haga clic para mostrar todos los datos</div>';
                 inlineSelectedCount.textContent = '0';
                 if (!readonly) {
-                    inlineConfirmAddress.textContent = t('confirm_address');
+                    inlineConfirmAddress.textContent = 'Confirmar dirección';
                     inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
                     addressStatusMsg.textContent = '';
                     inlineConfirmAddress.onclick = function() {
@@ -1436,13 +1211,13 @@
                         addressConfirmed = true;
                         renderList();
                         updateStatusBar();
-                        showToast(t('address_all'), 'success');
+                        showToast('Cambiado a mostrar todos los datos', 'success');
                         renderAddressSelector(recipients, rows, true);
                     };
                 } else {
-                    inlineConfirmAddress.textContent = t('change');
+                    inlineConfirmAddress.textContent = 'Cambiar';
                     inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
-                    addressStatusMsg.textContent = t('current_all');
+                    addressStatusMsg.textContent = 'Mostrando todos los datos';
                     addressStatusMsg.style.color = '#64748b';
                     inlineConfirmAddress.onclick = function() {
                         renderAddressSelector(recipients, rows, false);
@@ -1487,27 +1262,27 @@
             inlineSelectedCount.textContent = selected.length;
 
             if (readonly) {
-                inlineConfirmAddress.textContent = t('change');
+                inlineConfirmAddress.textContent = 'Cambiar';
                 inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
-                addressStatusMsg.textContent = t('confirmed_addresses', { count: selected.length });
+                addressStatusMsg.textContent = '✅ Seleccionadas ' + selected.length + ' direcciones, haga clic en "Cambiar" para modificar';
                 addressStatusMsg.style.color = '#16a34a';
                 inlineConfirmAddress.onclick = function() {
                     renderAddressSelector(recipients, rows, false);
                 };
             } else {
-                inlineConfirmAddress.textContent = t('confirm_address');
+                inlineConfirmAddress.textContent = 'Confirmar dirección';
                 inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
                 addressStatusMsg.textContent = '';
                 inlineConfirmAddress.onclick = function() {
                     if (selected.length === 0) {
-                        showToast(t('please_select_address'), 'warning');
+                        showToast('Seleccione al menos una dirección', 'warning');
                         return;
                     }
                     selectedAddresses = selected;
                     addressConfirmed = true;
                     renderList();
                     updateStatusBar();
-                    showToast(t('address_selected', { count: selected.length }), 'success');
+                    showToast('✅ Se seleccionaron ' + selected.length + ' direcciones, lista filtrada', 'success');
                     renderAddressSelector(recipients, rows, true);
                 };
             }
@@ -1517,7 +1292,7 @@
             // 由 inlineConfirmAddress.onclick 处理
         };
 
-        // ---- 上传文件 ----
+        // ---- 上传文件（修复关键） ----
         window.handleFile = function(file) {
             if (!file) return;
             var reader = new FileReader();
@@ -1531,11 +1306,11 @@
                     var parsed = parseExcelData(rows);
                     if (!parsed) return;
                     if (parsed.rows.length === 0) {
-                        showToast(t('no_data_parsed'), 'error');
+                        showToast('No se encontraron datos válidos', 'error');
                         return;
                     }
 
-                    fileInfo.innerHTML = t('parsed_info') + file.name + ' (' + parsed.rows.length + t('rows_info') + parsed.recipients.length + t('recipients_info') + ')';
+                    fileInfo.innerHTML = '✅ Archivo parseado: ' + file.name + ' (' + parsed.rows.length + ' filas, ' + parsed.recipients.length + ' destinatarios)';
                     allRows = parsed.rows;
 
                     var completeGroups = buildGroupsFromRows(parsed.rows);
@@ -1546,13 +1321,13 @@
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId: deviceId }));
                     } else {
-                        showToast(t('waiting_upload'), 'info');
+                        showToast('⏳ Esperando conexión para subir datos...', 'info');
                     }
 
                     if (recips.length > 0) {
-                        showToast(t('no_recipient', { count: recips.length }), 'success', 3000);
+                        showToast('📍 Se identificaron ' + recips.length + ' direcciones de destinatario', 'success', 3000);
                     } else {
-                        showToast(t('no_recipient_found'), 'warning', 3000);
+                        showToast('⚠️ No se encontró información de destinatario', 'warning', 3000);
                     }
 
                     var readonly = false;
@@ -1564,8 +1339,8 @@
                     renderAddressSelector(recips, parsed.rows, readonly);
 
                 } catch (err) {
-                    showToast(t('file_upload_error') + err.message, 'error');
-                    console.error('解析错误:', err);
+                    showToast('❌ Error al parsear: ' + err.message, 'error');
+                    console.error('Error parsing:', err);
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -1574,12 +1349,12 @@
         // ---- 更改地址 ----
         window.changeAddress = function() {
             if (allRows.length === 0) {
-                showToast(t('upload_first'), 'warning');
+                showToast('Primero cargue un archivo', 'warning');
                 return;
             }
             var recips = allRecipients;
             if (recips.length === 0) {
-                showToast(t('no_delivery_info'), 'warning');
+                showToast('Sin información de destinatario, no se puede seleccionar', 'warning');
                 return;
             }
             renderAddressSelector(recips, allRows, false);
@@ -1587,13 +1362,13 @@
 
         // ---- 导出 TXT ----
         window.exportTxt = function() {
-            var lines = ['复核清单', '生成: ' + new Date().toLocaleString()];
-            if (selectedAddresses.length) lines.push('收件人: ' + selectedAddresses.join(', '));
+            var lines = ['Lista de verificación', 'Generado: ' + new Date().toLocaleString()];
+            if (selectedAddresses.length) lines.push('Destinatarios: ' + selectedAddresses.join(', '));
             lines.push('─'.repeat(50));
             for (var i = 0; i < state.groups.length; i++) {
                 var g = state.groups[i];
                 if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
-                lines.push('【' + (g.type === 'fba' ? 'FBA货件' : '自定义箱条码') + ': ' + g.key + '】 ' + g.items.length + ' 箱');
+                lines.push('【' + (g.type === 'fba' ? 'FBA' : 'Custom') + ': ' + g.key + '】 ' + g.items.length + ' cajas');
                 for (var j = 0; j < g.items.length; j++) {
                     var item = g.items[j];
                     var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
@@ -1605,13 +1380,13 @@
             var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = '复核清单_' + new Date().toISOString().slice(0, 10) + '.txt';
+            a.download = 'Verificacion_' + new Date().toISOString().slice(0, 10) + '.txt';
             a.click();
             URL.revokeObjectURL(a.href);
-            showToast('📄 TXT已导出', 'success');
+            showToast('📄 TXT exportado', 'success');
         };
 
-        // ---- 导出 Excel（全新格式） ----
+        // ---- 导出 Excel ----
         window.exportExcel = function() {
             var wb = XLSX.utils.book_new();
 
@@ -1621,22 +1396,13 @@
                 var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 var addr = selectedAddresses.length > 0 ? selectedAddresses.join(', ') : '';
 
-                rows.push([t('excel_operator'), operator || '']);
-                rows.push([t('excel_vehicle'), vehicle || '']);
-                rows.push([t('excel_date'), dateStr]);
-                rows.push([t('excel_address'), addr]);
+                rows.push(['扫描员Escaneador:', operator || '']);
+                rows.push(['车牌Placa:', vehicle || '']);
+                rows.push(['导出日期Fecha:', dateStr]);
+                rows.push(['地址Direccion de entrega:', addr]);
                 rows.push([]);
 
-                var headers = [
-                    t('excel_header_num'),
-                    t('excel_header_type'),
-                    t('excel_header_key'),
-                    t('excel_header_subno'),
-                    t('excel_header_code'),
-                    t('excel_header_scanned'),
-                    t('excel_header_boxes'),
-                    t('excel_header_tarima')
-                ];
+                var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
                 rows.push(headers);
 
                 var idx = 0;
@@ -1646,10 +1412,10 @@
                     var g = state.groups.find(function(gr) { return gr.key === key; });
                     if (!g) continue;
                     if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
-                    var typeLabel = g.type === 'fba' ? t('excel_fba') : t('excel_custom');
+                    var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
                     var totalBoxes = g.items.length;
                     var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
-                    var totalText = t('excel_total_boxes', { count: totalBoxes, caja: boxWord });
+                    var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
 
                     idx++;
                     rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
@@ -1657,13 +1423,13 @@
                         var item = g.items[j];
                         var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
                         var scanned = state.scanStatus[item.code] || false;
-                        rows.push(['', '', '', j + 1, displayCode, scanned ? t('excel_yes') : t('excel_no'), scanned ? 1 : 0, '']);
+                        rows.push(['', '', '', j + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, '']);
                     }
                 }
 
                 var ws = XLSX.utils.aoa_to_sheet(rows);
                 ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
-                var sheetName = vehicle ? 'Placas ' + vehicle : '复核清单';
+                var sheetName = vehicle ? 'Placas ' + vehicle : 'Verificacion';
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
             } else {
                 var groups = {};
@@ -1695,37 +1461,28 @@
                     var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
 
-                    rows.push([t('excel_operator'), group.operator]);
-                    rows.push([t('excel_vehicle'), group.vehicle]);
-                    rows.push([t('excel_date'), dateStr]);
-                    rows.push([t('excel_address'), addrDisplay]);
+                    rows.push(['扫描员Escaneador:', group.operator]);
+                    rows.push(['车牌Placa:', group.vehicle]);
+                    rows.push(['导出日期Fecha:', dateStr]);
+                    rows.push(['地址Direccion de entrega:', addrDisplay]);
                     rows.push([]);
 
-                    var headers = [
-                        t('excel_header_num'),
-                        t('excel_header_type'),
-                        t('excel_header_key'),
-                        t('excel_header_subno'),
-                        t('excel_header_code'),
-                        t('excel_header_scanned'),
-                        t('excel_header_boxes'),
-                        t('excel_header_tarima')
-                    ];
+                    var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
                     rows.push(headers);
 
                     var idx = 0;
                     for (var bi = 0; bi < group.batches.length; bi++) {
                         var batch = group.batches[bi];
-                        var tarimaName = batch.name || t('excel_tarima_prefix') + (bi + 1);
+                        var tarimaName = batch.name || 'Tarima' + (bi + 1);
                         for (var ki = 0; ki < batch.keys.length; ki++) {
                             var key = batch.keys[ki];
                             var g = state.groups.find(function(gr) { return gr.key === key; });
                             if (!g) continue;
                             if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
-                            var typeLabel = g.type === 'fba' ? t('excel_fba') : t('excel_custom');
+                            var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
                             var totalBoxes = g.items.length;
                             var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
-                            var totalText = t('excel_total_boxes', { count: totalBoxes, caja: boxWord });
+                            var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
 
                             idx++;
                             rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
@@ -1734,7 +1491,7 @@
                                 var item = g.items[ji];
                                 var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
                                 var scanned = state.scanStatus[item.code] || false;
-                                rows.push(['', '', '', ji + 1, displayCode, scanned ? t('excel_yes') : t('excel_no'), scanned ? 1 : 0, tarimaName]);
+                                rows.push(['', '', '', ji + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, tarimaName]);
                             }
                         }
                     }
@@ -1751,16 +1508,16 @@
             var blob = new Blob([out], { type: 'application/octet-stream' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = '复核清单_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+            a.download = 'Verificacion_' + new Date().toISOString().slice(0, 10) + '.xlsx';
             a.click();
             URL.revokeObjectURL(a.href);
-            showToast('📊 Excel已按身份/地址/日期分组导出', 'success');
+            showToast('📊 Excel exportado', 'success');
         };
 
         // ---- 身份验证 ----
         window.showOperatorModal = function(reauth) {
             reauth = reauth || false;
-            console.log('📌 showOperatorModal 被调用, reauth=', reauth);
+            console.log('📌 showOperatorModal llamada, reauth=', reauth);
             var modal = document.getElementById('operatorModal');
             modal.style.display = 'flex';
             if (reauth) {
@@ -1780,7 +1537,7 @@
         window.cancelIdentity = function() {
             hideOperatorModal();
             if (!isInitialized) {
-                showToast('请完成身份验证', 'warning');
+                showToast('Por favor complete la autenticación', 'warning');
                 setTimeout(function() { window.showOperatorModal(false); }, 300);
             }
         };
@@ -1789,7 +1546,7 @@
             var op = document.getElementById('operatorInput').value.trim();
             var veh = document.getElementById('vehicleInput').value.trim();
             if (!op || !veh) {
-                showToast('请填写完整信息', 'error');
+                showToast('Complete todos los campos', 'error');
                 return;
             }
             operator = op;
@@ -1799,7 +1556,7 @@
             operatorDisplay.textContent = operator;
             vehicleDisplay.textContent = vehicle;
             hideOperatorModal();
-            showToast(t('identity_updated'), 'success', 2000);
+            showToast('✅ Identidad actualizada', 'success', 2000);
             scanInput.focus();
             if (!isInitialized) {
                 isInitialized = true;
@@ -1821,7 +1578,7 @@
                 localStorage.setItem('pda_selectedAddresses', JSON.stringify(selectedAddresses));
                 localStorage.setItem('pda_addressCollapsed', JSON.stringify(addressCollapsed));
                 localStorage.setItem('pda_batches', JSON.stringify(batches));
-            } catch (e) { console.warn('保存本地状态失败:', e); }
+            } catch (e) { console.warn('Error guardando estado local:', e); }
         }
 
         function loadLocalState() {
@@ -1855,14 +1612,14 @@
                         });
                     }
                 }
-            } catch (e) { console.warn('加载本地状态失败:', e); }
+            } catch (e) { console.warn('Error cargando estado local:', e); }
         }
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 页面初始化... (v4.1)');
+            console.log('🚀 Inicializando... (v5.0)');
             loadLocalState();
-            console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
+            console.log('📂 Estado local:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
             var savedOperator = localStorage.getItem('operator');
             var savedVehicle = localStorage.getItem('vehicle');
@@ -1885,9 +1642,9 @@
                 window.showOperatorModal(false);
             }
 
-            // ---- 绑定事件（修复 PDA 按钮问题） ----
+            // ---- Event bindings ----
             function bindEvents() {
-                // 更换身份按钮：同时绑定 click 和 touchstart
+                // 更换身份
                 changeIdentityBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     window.showOperatorModal(true);
@@ -1897,15 +1654,11 @@
                     window.showOperatorModal(true);
                 }, { passive: false });
 
-                // 语言切换
-                langSwitch.addEventListener('click', window.toggleLang);
-                langSwitch.addEventListener('touchstart', window.toggleLang, { passive: false });
-
                 // 强制连接
                 forceConnectBtn.addEventListener('click', window.forceConnect);
                 forceConnectBtn.addEventListener('touchstart', window.forceConnect, { passive: false });
 
-                // 确认框按钮
+                // 确认框
                 confirmOkBtn.addEventListener('click', window.confirmOk);
                 confirmCancelBtn.addEventListener('click', window.confirmCancel);
 
@@ -1913,21 +1666,46 @@
                 confirmOperatorBtn.addEventListener('click', window.confirmIdentity);
                 cancelOperatorBtn.addEventListener('click', window.cancelIdentity);
 
-                // 其他按钮（扫描、结束主码等）使用内联 onclick 已足够，但也可统一改为 addEventListener，但保留原样。
-                // 但为了兼容，我们保留原有 onclick 属性（已在 HTML 中设置）。
+                // 全局统计折叠
+                document.getElementById('globalStatsToggle').addEventListener('click', window.toggleGlobalStats);
+                document.getElementById('resetCollapseToggle').addEventListener('click', window.toggleResetCollapse);
+                document.getElementById('addressToggle').addEventListener('click', window.toggleAddressCollapse);
             }
 
             bindEvents();
 
-            document.getElementById('uploadZone').onclick = function() { fileInput.click(); };
+            // ---- 文件上传绑定（修复关键） ----
+            fileInput.addEventListener('change', function(e) {
+                if (this.files.length) {
+                    window.handleFile(this.files[0]);
+                }
+                this.value = ''; // 允许重复上传同一文件
+            });
 
-            // 全局统计折叠
-            document.getElementById('globalStatsToggle').addEventListener('click', window.toggleGlobalStats);
-            document.getElementById('resetCollapseToggle').addEventListener('click', window.toggleResetCollapse);
-            document.getElementById('addressToggle').addEventListener('click', window.toggleAddressCollapse);
+            uploadZone.addEventListener('click', function() {
+                fileInput.click();
+            });
 
-            // 扫描按钮（已用 onclick，但为了确保，再绑定一次）
+            // 扫描按钮
             document.getElementById('scanBtn').addEventListener('click', window.handleScan);
+            // 扫描输入框回车
+            scanInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    window.handleScan();
+                }
+            });
+
+            // 其他按钮（结束主码等）使用内联 onclick，但我们也绑定一下以确保
+            document.getElementById('endMainBtn').addEventListener('click', window.switchToSubMode);
+            document.getElementById('forceEndBtn').addEventListener('click', window.forceEnd);
+            document.getElementById('resetBatchBtn').addEventListener('click', window.resetMyKeys);
+            document.getElementById('resetAllBtn').addEventListener('click', window.resetAll);
+            document.getElementById('exportTxtBtn').addEventListener('click', window.exportTxt);
+            document.getElementById('exportExcelBtn').addEventListener('click', window.exportExcel);
+            document.getElementById('changeAddressBtn').addEventListener('click', window.changeAddress);
+            document.getElementById('toggleDoneBtn').addEventListener('click', window.toggleFilterMode);
+            document.getElementById('inlineConfirmAddress').addEventListener('click', window.confirmAddressSelection);
 
             updateUI();
             updateStatusBar();
@@ -1941,13 +1719,10 @@
             init();
         }
 
-        // 暴露全局函数
+        // ---- Exponer funciones globales para eventos ----
         window.connectWebSocket = connectWebSocket;
-        window.updateUI = updateUI;
-        window.toggleLang = window.toggleLang || function() { /* 已定义 */ };
-        window.showOperatorModal = showOperatorModal;
-        window.forceConnect = forceConnect;
         window.handleScan = handleScan;
+        window.forceConnect = forceConnect;
         window.switchToSubMode = switchToSubMode;
         window.forceEnd = forceEnd;
         window.resetMyKeys = resetMyKeys;
@@ -1965,6 +1740,7 @@
         window.exportTxt = exportTxt;
         window.exportExcel = exportExcel;
         window.confirmAddressSelection = confirmAddressSelection;
+        window.showOperatorModal = showOperatorModal;
     </script>
 </body>
 </html>
