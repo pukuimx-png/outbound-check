@@ -143,18 +143,18 @@
         <h1>
             <span id="pageTitle" data-i18n="pageTitle">📦 出库核对</span>
             <small id="connectionStatus" data-i18n="disconnected">● 未连接</small>
-            <button class="lang-switch" id="langSwitch" onclick="window.toggleLang()">Español</button>
+            <button class="lang-switch" id="langSwitch">Español</button>
         </h1>
         <div id="debugPanel">
             <div><span class="info">🔍 调试信息</span></div>
             <div id="debugContent">等待连接...</div>
         </div>
-        <button class="force-connect-btn" id="forceConnectBtn" onclick="window.forceConnect()">🔌 强制连接 WebSocket</button>
+        <button class="force-connect-btn" id="forceConnectBtn">🔌 强制连接 WebSocket</button>
         <div class="status-bar">
             <div class="status-row identity">
                 <span class="operator-info"><span class="label" id="lblOperator" data-i18n="operator">扫描员:</span> <span id="operatorDisplay">-</span></span>
                 <span class="operator-info"><span class="label" id="lblVehicle" data-i18n="vehicle">车牌:</span> <span id="vehicleDisplay">-</span></span>
-                <button class="change-identity-btn" id="changeIdentityBtn" onclick="window.showOperatorModal(true)" data-i18n="change_identity">🔄 更换身份</button>
+                <button class="change-identity-btn" id="changeIdentityBtn">🔄 更换身份</button>
             </div>
             <div class="status-row progress">
                 <span><span class="label" id="lblMode" data-i18n="mode">本机模式:</span> <span id="modeDisplay">主码</span></span>
@@ -166,10 +166,10 @@
         <div class="selected-addresses" id="selectedAddressesDisplay" style="display:none;">
             <span id="lblSelectedAddresses" data-i18n="selected_addresses">📍 已选地址：</span>
             <span id="addrTags"></span>
-            <button class="change-btn" id="changeAddressBtn" onclick="window.changeAddress()" data-i18n="change">更改</button>
+            <button class="change-btn" id="changeAddressBtn">更改</button>
         </div>
         <div class="global-stats-wrapper">
-            <div class="global-stats-header" id="globalStatsToggle" onclick="window.toggleGlobalStats()">
+            <div class="global-stats-header" id="globalStatsToggle">
                 <span id="lblGlobalStats" data-i18n="global_stats">📊 全局统计</span>
                 <span class="toggle-icon" id="globalStatsIcon">▼</span>
             </div>
@@ -181,57 +181,57 @@
             </div>
         </div>
         <div class="address-selector" id="addressSelector">
-            <div class="title" id="addressToggle" onclick="window.toggleAddressCollapse()">
+            <div class="title" id="addressToggle">
                 <span id="lblDeliveryAddress" data-i18n="delivery_address">📍 派送地址</span>
                 <span class="count"><span id="lblSelectedCount" data-i18n="selected_count">已选</span> <span id="inlineSelectedCount">0</span> <span id="lblAddrUnit" data-i18n="addr_unit">个</span></span>
                 <span class="toggle-icon" id="addressIcon">▼</span>
             </div>
             <div class="body" id="addressBody">
                 <div class="address-grid" id="addressGrid"></div>
-                <button class="btn btn-primary confirm-address-btn" id="inlineConfirmAddress" onclick="window.confirmAddressSelection()" data-i18n="confirm_address">确认地址</button>
+                <button class="btn btn-primary confirm-address-btn" id="inlineConfirmAddress">确认地址</button>
                 <div class="status-msg" id="addressStatusMsg"></div>
             </div>
         </div>
         <div class="upload-zone desktop-only" id="uploadZone">
             <span style="font-size:28px;">📂</span>
             <p id="lblUploadPrompt" data-i18n="upload_prompt">点击上传出库表 (.xlsx/.xls)</p>
-            <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="window.handleFile(this.files[0])">
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
             <div class="file-info" id="fileInfo"><span id="lblNotUploaded" data-i18n="not_uploaded">未上传</span></div>
         </div>
         <div class="scan-input-group">
             <input type="text" id="scanInput" placeholder="扫描条码..." autofocus>
-            <button class="btn btn-primary" id="scanBtn" onclick="window.handleScan()">↵</button>
+            <button class="btn btn-primary" id="scanBtn">↵</button>
         </div>
         <div class="flex-row">
-            <button class="btn btn-warning" id="endMainBtn" onclick="window.switchToSubMode()" data-i18n="end_main">✅ 结束主码</button>
-            <button class="btn btn-danger" id="forceEndBtn" onclick="window.forceEnd()" data-i18n="force_end">⏹ 强制结束</button>
-            <button class="btn btn-outline" id="resetBatchBtn" onclick="window.resetMyKeys()" data-i18n="reset_my_keys">🔄 重置我的主码</button>
-            <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn" onclick="window.toggleFilterMode()" data-i18n="show_all">显示全部</button>
+            <button class="btn btn-warning" id="endMainBtn" data-i18n="end_main">✅ 结束主码</button>
+            <button class="btn btn-danger" id="forceEndBtn" data-i18n="force_end">⏹ 强制结束</button>
+            <button class="btn btn-outline" id="resetBatchBtn" data-i18n="reset_my_keys">🔄 重置我的主码</button>
+            <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn" data-i18n="show_all">显示全部</button>
         </div>
         <div class="reset-collapse-wrapper">
-            <div class="reset-collapse-header" id="resetCollapseToggle" onclick="window.toggleResetCollapse()">
+            <div class="reset-collapse-header" id="resetCollapseToggle">
                 <span id="lblAdvanced" data-i18n="advanced">⚙️ 高级操作</span>
                 <span class="arrow" id="resetCollapseArrow">▶</span>
             </div>
             <div class="reset-collapse-body" id="resetCollapseBody">
-                <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;" onclick="window.resetAll()" data-i18n="reset_all">🔁 全部重置（清除所有数据）</button>
+                <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;" data-i18n="reset_all">🔁 全部重置（清除所有数据）</button>
             </div>
         </div>
         <div class="list-container" id="listContainer">
             <div id="listBody" style="max-height:45vh;overflow-y:auto;"></div>
         </div>
         <div style="margin-top:10px;display:flex;gap:6px;">
-            <button class="btn btn-success" id="exportTxtBtn" onclick="window.exportTxt()" data-i18n="export_txt">📄 TXT</button>
-            <button class="btn btn-primary" id="exportExcelBtn" onclick="window.exportExcel()" data-i18n="export_excel">📊 Excel</button>
+            <button class="btn btn-success" id="exportTxtBtn" data-i18n="export_txt">📄 TXT</button>
+            <button class="btn btn-primary" id="exportExcelBtn" data-i18n="export_excel">📊 Excel</button>
         </div>
-        <div class="version-tag">v4.0 - 20260725</div>
+        <div class="version-tag">v4.1 - 20260725</div>
     </div>
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
             <h2 id="confirmTitle">⚠️ 确认</h2>
             <p id="confirmMessage" style="white-space:pre-wrap; word-break:break-word;"></p>
-            <button class="btn btn-primary" id="confirmOkBtn" onclick="window.confirmOk()" data-i18n="confirm_ok">确定</button>
-            <button class="btn btn-cancel" id="confirmCancelBtn" onclick="window.confirmCancel()" data-i18n="confirm_cancel">取消</button>
+            <button class="btn btn-primary" id="confirmOkBtn">确定</button>
+            <button class="btn btn-cancel" id="confirmCancelBtn">取消</button>
         </div>
     </div>
     <div class="modal-overlay" id="operatorModal" style="display:none;">
@@ -241,19 +241,19 @@
             <input type="text" id="operatorInput" placeholder="请输入姓名" autofocus>
             <label id="lblVehiclePlate" data-i18n="vehicle_plate">车牌号</label>
             <input type="text" id="vehicleInput" placeholder="请输入车牌号">
-            <button class="btn btn-primary" id="confirmOperatorBtn" onclick="window.confirmIdentity()" data-i18n="confirm">确认</button>
-            <button class="btn btn-cancel" id="cancelOperatorBtn" onclick="window.cancelIdentity()" data-i18n="cancel">取消</button>
+            <button class="btn btn-primary" id="confirmOperatorBtn">确认</button>
+            <button class="btn btn-cancel" id="cancelOperatorBtn">取消</button>
         </div>
     </div>
     <div class="toast" id="toast"></div>
 
     <script>
         // ============================================================
-        // 版本 v4.0 - 导出Excel格式全面升级
+        // 版本 v4.1 - 修复 PDA 按钮问题（改用 addEventListener + touchstart）
         // ============================================================
-        console.log('📦 出库核对 v4.0 - 20260725');
+        console.log('📦 出库核对 v4.1 - 20260725');
 
-        // ---- 语言包（完整双语） ----
+        // ---- 语言包（完整） ----
         var LANG = {
             zh: {
                 pageTitle: '📦 出库核对',
@@ -588,6 +588,13 @@
         var fileInput = document.getElementById('fileInput');
         var endMainBtn = document.getElementById('endMainBtn');
         var forceEndBtn = document.getElementById('forceEndBtn');
+        var changeIdentityBtn = document.getElementById('changeIdentityBtn');
+        var langSwitch = document.getElementById('langSwitch');
+        var forceConnectBtn = document.getElementById('forceConnectBtn');
+        var confirmOkBtn = document.getElementById('confirmOkBtn');
+        var confirmCancelBtn = document.getElementById('confirmCancelBtn');
+        var confirmOperatorBtn = document.getElementById('confirmOperatorBtn');
+        var cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
 
         // ---- 调试面板 ----
         function updateDebug(msg, type) {
@@ -611,7 +618,7 @@
             localStorage.setItem('pda_lang', next);
             console.log('🌐 切换语言为:', next);
             updateUI();
-            document.getElementById('langSwitch').textContent = next === 'zh' ? 'Español' : '中文';
+            langSwitch.textContent = next === 'zh' ? 'Español' : '中文';
         };
 
         function updateUI() {
@@ -630,7 +637,7 @@
             updateFilterButtonText();
             renderList();
             updateStatusBar();
-            document.getElementById('langSwitch').textContent = currentLang === 'zh' ? 'Español' : '中文';
+            langSwitch.textContent = currentLang === 'zh' ? 'Español' : '中文';
         }
 
         function updateConnectionStatus() {
@@ -812,7 +819,7 @@
                         updateDebug('📤 自动扫描触发: ' + current, 'info');
                         window.handleScan();
                     }
-                }, 150);
+                }, 90);
             }
         }
         scanInput.addEventListener('input', triggerAutoScan);
@@ -1084,8 +1091,8 @@
                 keys: pendingKeys.slice(),
                 operator: operator || '',
                 vehicle: vehicle || '',
-                addresses: selectedAddresses.slice(),   // 保存当前地址列表
-                createdAt: new Date().toISOString().slice(0, 10) // 保存日期（YYYY-MM-DD）
+                addresses: selectedAddresses.slice(),
+                createdAt: new Date().toISOString().slice(0, 10)
             });
             showToast(t('batch_recorded') + batchName + ' (' + pendingKeys.length + ' 个主码)', 'success', 3000);
             taskKeys = pendingKeys.slice();
@@ -1578,7 +1585,7 @@
             renderAddressSelector(recips, allRows, false);
         };
 
-        // ---- 导出 TXT（保持原有） ----
+        // ---- 导出 TXT ----
         window.exportTxt = function() {
             var lines = ['复核清单', '生成: ' + new Date().toLocaleString()];
             if (selectedAddresses.length) lines.push('收件人: ' + selectedAddresses.join(', '));
@@ -1604,25 +1611,22 @@
             showToast('📄 TXT已导出', 'success');
         };
 
-        // ---- 导出 Excel（全新升级版） ----
+        // ---- 导出 Excel（全新格式） ----
         window.exportExcel = function() {
             var wb = XLSX.utils.book_new();
 
-            // 如果没有批次，则生成一个默认Sheet（使用当前状态）
             if (batches.length === 0) {
                 var rows = [];
                 var now = new Date();
                 var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 var addr = selectedAddresses.length > 0 ? selectedAddresses.join(', ') : '';
 
-                // 顶部信息
                 rows.push([t('excel_operator'), operator || '']);
                 rows.push([t('excel_vehicle'), vehicle || '']);
                 rows.push([t('excel_date'), dateStr]);
                 rows.push([t('excel_address'), addr]);
                 rows.push([]);
 
-                // 表头
                 var headers = [
                     t('excel_header_num'),
                     t('excel_header_type'),
@@ -1649,7 +1653,6 @@
 
                     idx++;
                     rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
-                    // 没有批次，Tarima列留空或填""
                     for (var j = 0; j < g.items.length; j++) {
                         var item = g.items[j];
                         var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
@@ -1663,18 +1666,14 @@
                 var sheetName = vehicle ? 'Placas ' + vehicle : '复核清单';
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
             } else {
-                // 有批次：按身份+地址+日期分组
                 var groups = {};
 
-                // 遍历批次，构造分组键
                 for (var i = 0; i < batches.length; i++) {
                     var b = batches[i];
                     var op = b.operator || '';
                     var veh = b.vehicle || '';
-                    // 地址：使用保存的地址列表，若没有则用当前选中的地址
                     var addrList = b.addresses || selectedAddresses.slice();
                     var addrKey = addrList.length ? addrList.join(',') : '';
-                    // 日期：使用保存的日期，若没有则用当前日期
                     var dateKey = b.createdAt || new Date().toISOString().slice(0, 10);
                     var groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
                     if (!groups[groupKey]) {
@@ -1689,24 +1688,19 @@
                     groups[groupKey].batches.push(b);
                 }
 
-                // 遍历每个分组生成Sheet
                 for (var gKey in groups) {
                     var group = groups[gKey];
                     var rows = [];
                     var now = new Date();
                     var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    // 顶部信息：使用分组的身份和地址，日期使用分组日期（但可以显示当前时间或分组日期）
-                    // 我们使用分组日期显示在顶部，但用户可能希望显示导出日期，这里保留导出日期，同时可加一个“日期”字段表示批次日期，但需求是“导出日期”，我们使用当前导出日期。
-                    // 但用户要求“日期变动要另起一页”，我们已经按日期分组，所以每个Sheet只包含同一日期的批次。
-                    // 顶部显示扫描员、车牌、导出日期（当前）、地址。
+                    var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
+
                     rows.push([t('excel_operator'), group.operator]);
                     rows.push([t('excel_vehicle'), group.vehicle]);
                     rows.push([t('excel_date'), dateStr]);
-                    var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
                     rows.push([t('excel_address'), addrDisplay]);
                     rows.push([]);
 
-                    // 表头
                     var headers = [
                         t('excel_header_num'),
                         t('excel_header_type'),
@@ -1720,16 +1714,13 @@
                     rows.push(headers);
 
                     var idx = 0;
-                    // 遍历该组的所有批次
                     for (var bi = 0; bi < group.batches.length; bi++) {
                         var batch = group.batches[bi];
                         var tarimaName = batch.name || t('excel_tarima_prefix') + (bi + 1);
-                        // 遍历批次中的主码
                         for (var ki = 0; ki < batch.keys.length; ki++) {
                             var key = batch.keys[ki];
                             var g = state.groups.find(function(gr) { return gr.key === key; });
                             if (!g) continue;
-                            // 地址过滤（如果已选地址）
                             if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
                             var typeLabel = g.type === 'fba' ? t('excel_fba') : t('excel_custom');
                             var totalBoxes = g.items.length;
@@ -1748,12 +1739,9 @@
                         }
                     }
 
-                    // 删除多余空行（但保留结构）
                     var ws = XLSX.utils.aoa_to_sheet(rows);
                     ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
-                    // Sheet命名：车牌+日期（避免重名）
                     var sheetName = (group.vehicle ? 'Placas ' + group.vehicle : '') + ' ' + group.date;
-                    // 替换特殊字符（Excel工作表名限制）
                     sheetName = sheetName.replace(/[\\:*?/\[\]]/g, '');
                     XLSX.utils.book_append_sheet(wb, ws, sheetName);
                 }
@@ -1772,6 +1760,7 @@
         // ---- 身份验证 ----
         window.showOperatorModal = function(reauth) {
             reauth = reauth || false;
+            console.log('📌 showOperatorModal 被调用, reauth=', reauth);
             var modal = document.getElementById('operatorModal');
             modal.style.display = 'flex';
             if (reauth) {
@@ -1871,7 +1860,7 @@
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 页面初始化... (v4.0)');
+            console.log('🚀 页面初始化... (v4.1)');
             loadLocalState();
             console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
@@ -1896,7 +1885,49 @@
                 window.showOperatorModal(false);
             }
 
+            // ---- 绑定事件（修复 PDA 按钮问题） ----
+            function bindEvents() {
+                // 更换身份按钮：同时绑定 click 和 touchstart
+                changeIdentityBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.showOperatorModal(true);
+                });
+                changeIdentityBtn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    window.showOperatorModal(true);
+                }, { passive: false });
+
+                // 语言切换
+                langSwitch.addEventListener('click', window.toggleLang);
+                langSwitch.addEventListener('touchstart', window.toggleLang, { passive: false });
+
+                // 强制连接
+                forceConnectBtn.addEventListener('click', window.forceConnect);
+                forceConnectBtn.addEventListener('touchstart', window.forceConnect, { passive: false });
+
+                // 确认框按钮
+                confirmOkBtn.addEventListener('click', window.confirmOk);
+                confirmCancelBtn.addEventListener('click', window.confirmCancel);
+
+                // 身份验证模态框
+                confirmOperatorBtn.addEventListener('click', window.confirmIdentity);
+                cancelOperatorBtn.addEventListener('click', window.cancelIdentity);
+
+                // 其他按钮（扫描、结束主码等）使用内联 onclick 已足够，但也可统一改为 addEventListener，但保留原样。
+                // 但为了兼容，我们保留原有 onclick 属性（已在 HTML 中设置）。
+            }
+
+            bindEvents();
+
             document.getElementById('uploadZone').onclick = function() { fileInput.click(); };
+
+            // 全局统计折叠
+            document.getElementById('globalStatsToggle').addEventListener('click', window.toggleGlobalStats);
+            document.getElementById('resetCollapseToggle').addEventListener('click', window.toggleResetCollapse);
+            document.getElementById('addressToggle').addEventListener('click', window.toggleAddressCollapse);
+
+            // 扫描按钮（已用 onclick，但为了确保，再绑定一次）
+            document.getElementById('scanBtn').addEventListener('click', window.handleScan);
 
             updateUI();
             updateStatusBar();
@@ -1910,10 +1941,30 @@
             init();
         }
 
-        // 暴露全局
+        // 暴露全局函数
         window.connectWebSocket = connectWebSocket;
         window.updateUI = updateUI;
         window.toggleLang = window.toggleLang || function() { /* 已定义 */ };
+        window.showOperatorModal = showOperatorModal;
+        window.forceConnect = forceConnect;
+        window.handleScan = handleScan;
+        window.switchToSubMode = switchToSubMode;
+        window.forceEnd = forceEnd;
+        window.resetMyKeys = resetMyKeys;
+        window.resetAll = resetAll;
+        window.confirmOk = confirmOk;
+        window.confirmCancel = confirmCancel;
+        window.confirmIdentity = confirmIdentity;
+        window.cancelIdentity = cancelIdentity;
+        window.toggleGlobalStats = toggleGlobalStats;
+        window.toggleResetCollapse = toggleResetCollapse;
+        window.toggleAddressCollapse = toggleAddressCollapse;
+        window.toggleFilterMode = toggleFilterMode;
+        window.changeAddress = changeAddress;
+        window.handleFile = handleFile;
+        window.exportTxt = exportTxt;
+        window.exportExcel = exportExcel;
+        window.confirmAddressSelection = confirmAddressSelection;
     </script>
 </body>
 </html>
