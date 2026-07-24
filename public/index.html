@@ -7,8 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 样式与之前相同，保持不变，此处省略以节省篇幅，实际部署包含完整样式 */
-        /* 为了完整，我在此处提供完整样式（与之前相同） */
+        /* 样式与之前完全相同，此处省略以节省篇幅，实际部署包含完整样式 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -225,7 +224,7 @@
             <button class="btn btn-success" id="exportTxtBtn" onclick="window.exportTxt()" data-i18n="export_txt">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn" onclick="window.exportExcel()" data-i18n="export_excel">📊 Excel</button>
         </div>
-        <div class="version-tag">v3.3 - 20260725</div>
+        <div class="version-tag">v4.0 - 20260725</div>
     </div>
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
@@ -250,11 +249,11 @@
 
     <script>
         // ============================================================
-        // 版本 v3.3 - 增强自动连续扫描（input + keyup 防抖）
+        // 版本 v4.0 - 导出Excel格式全面升级
         // ============================================================
-        console.log('📦 出库核对 v3.3 - 20260725');
+        console.log('📦 出库核对 v4.0 - 20260725');
 
-        // ---- 语言包（完整） ----
+        // ---- 语言包（完整双语） ----
         var LANG = {
             zh: {
                 pageTitle: '📦 出库核对',
@@ -365,6 +364,25 @@
                 confirm_ok: '确定',
                 confirm_cancel: '取消',
                 scan_placeholder: '扫描条码...',
+                // Excel 导出专用
+                excel_operator: '扫描员Escaneador:',
+                excel_vehicle: '车牌Placa:',
+                excel_date: '导出日期Fecha:',
+                excel_address: '地址Direccion de entrega:',
+                excel_header_num: '#',
+                excel_header_type: '分组类型/Tipo',
+                excel_header_key: '分组Key/Guia',
+                excel_header_subno: '子项序号/No.',
+                excel_header_code: '子项条码/Codigo',
+                excel_header_scanned: '已扫描/Escaneado',
+                excel_header_boxes: '箱数/Cajas',
+                excel_header_tarima: '卡板/Tarima',
+                excel_fba: 'FBA货件',
+                excel_custom: '自定义',
+                excel_total_boxes: '共{count}箱/Total {count} {caja}',
+                excel_yes: '是/Si',
+                excel_no: '否/No',
+                excel_tarima_prefix: 'Tarima',
             },
             es: {
                 pageTitle: '📦 Verificación de Salida',
@@ -475,6 +493,25 @@
                 confirm_ok: 'Aceptar',
                 confirm_cancel: 'Cancelar',
                 scan_placeholder: 'Escanear código de QR',
+                // Excel 导出专用
+                excel_operator: '扫描员Escaneador:',
+                excel_vehicle: '车牌Placa:',
+                excel_date: '导出日期Fecha:',
+                excel_address: '地址Direccion de entrega:',
+                excel_header_num: '#',
+                excel_header_type: '分组类型/Tipo',
+                excel_header_key: '分组Key/Guia',
+                excel_header_subno: '子项序号/No.',
+                excel_header_code: '子项条码/Codigo',
+                excel_header_scanned: '已扫描/Escaneado',
+                excel_header_boxes: '箱数/Cajas',
+                excel_header_tarima: '卡板/Tarima',
+                excel_fba: 'FBA货件',
+                excel_custom: '自定义',
+                excel_total_boxes: '共{count}箱/Total {count} {caja}',
+                excel_yes: '是/Si',
+                excel_no: '否/No',
+                excel_tarima_prefix: 'Tarima',
             }
         };
 
@@ -578,7 +615,6 @@
         };
 
         function updateUI() {
-            console.log('🔄 执行 updateUI，当前语言:', currentLang);
             document.querySelectorAll('[data-i18n]').forEach(function(el) {
                 var key = el.getAttribute('data-i18n');
                 el.textContent = t(key);
@@ -765,13 +801,12 @@
             }
         }
 
-        // ---- 自动连续扫描（增强版） ----
+        // ---- 自动连续扫描 ----
         function triggerAutoScan() {
             var val = scanInput.value.trim();
             if (val.length >= 3) {
                 if (scanTimer) clearTimeout(scanTimer);
                 scanTimer = setTimeout(function() {
-                    // 再次检查，防止内容被清空
                     var current = scanInput.value.trim();
                     if (current.length >= 3) {
                         updateDebug('📤 自动扫描触发: ' + current, 'info');
@@ -780,11 +815,9 @@
                 }, 150);
             }
         }
-
-        // 绑定事件（兼容 input 和 keyup）
         scanInput.addEventListener('input', triggerAutoScan);
         scanInput.addEventListener('keyup', function(e) {
-            if (e.key === 'Enter') return; // 回车由原来的回车处理
+            if (e.key === 'Enter') return;
             triggerAutoScan();
         });
 
@@ -795,7 +828,6 @@
                 showToast(t('invalid_scan'), 'warning');
                 return;
             }
-            // 清空输入框，防止重复提交
             scanInput.value = '';
             var extracted = extractCodeFromInput(code);
             console.log('📥 原始输入:', code, '→ 提取后:', extracted);
@@ -841,7 +873,6 @@
             }
         };
 
-        // ---- 提取码 ----
         function extractCodeFromInput(input) {
             if (!input) return input;
             var trimmed = input.trim();
@@ -1037,7 +1068,7 @@
             connectWebSocket();
         };
 
-        // ---- 结束主码 ----
+        // ---- 结束主码（记录批次，增加地址和创建时间） ----
         window.switchToSubMode = function() {
             if (pendingKeys.length === 0) {
                 showToast(t('no_pending'), 'warning');
@@ -1052,7 +1083,9 @@
                 name: batchName,
                 keys: pendingKeys.slice(),
                 operator: operator || '',
-                vehicle: vehicle || ''
+                vehicle: vehicle || '',
+                addresses: selectedAddresses.slice(),   // 保存当前地址列表
+                createdAt: new Date().toISOString().slice(0, 10) // 保存日期（YYYY-MM-DD）
             });
             showToast(t('batch_recorded') + batchName + ' (' + pendingKeys.length + ' 个主码)', 'success', 3000);
             taskKeys = pendingKeys.slice();
@@ -1545,7 +1578,7 @@
             renderAddressSelector(recips, allRows, false);
         };
 
-        // ---- 导出 ----
+        // ---- 导出 TXT（保持原有） ----
         window.exportTxt = function() {
             var lines = ['复核清单', '生成: ' + new Date().toLocaleString()];
             if (selectedAddresses.length) lines.push('收件人: ' + selectedAddresses.join(', '));
@@ -1571,32 +1604,161 @@
             showToast('📄 TXT已导出', 'success');
         };
 
+        // ---- 导出 Excel（全新升级版） ----
         window.exportExcel = function() {
             var wb = XLSX.utils.book_new();
-            var rows = [];
-            var now = new Date();
-            var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            rows.push(['扫描员:', operator || '']);
-            rows.push(['车牌:', vehicle || '']);
-            rows.push(['导出日期:', dateStr]);
-            rows.push([]);
-            var headers = ['#', '分组类型', '分组Key', '子项序号', '子项条码', '已扫描', '箱数'];
-            rows.push(headers);
-            var idx = 0;
-            for (var i = 0; i < state.groups.length; i++) {
-                var g = state.groups[i];
-                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
-                idx++;
-                rows.push([idx, g.type === 'fba' ? 'FBA货件' : '自定义', g.key, '', '共' + g.items.length + '箱', '', '']);
-                for (var j = 0; j < g.items.length; j++) {
-                    var item = g.items[j];
-                    var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
-                    var scanned = state.scanStatus[item.code] || false;
-                    rows.push(['', '', '', j + 1, displayCode, scanned ? '是' : '否', scanned ? 1 : 0]);
+
+            // 如果没有批次，则生成一个默认Sheet（使用当前状态）
+            if (batches.length === 0) {
+                var rows = [];
+                var now = new Date();
+                var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                var addr = selectedAddresses.length > 0 ? selectedAddresses.join(', ') : '';
+
+                // 顶部信息
+                rows.push([t('excel_operator'), operator || '']);
+                rows.push([t('excel_vehicle'), vehicle || '']);
+                rows.push([t('excel_date'), dateStr]);
+                rows.push([t('excel_address'), addr]);
+                rows.push([]);
+
+                // 表头
+                var headers = [
+                    t('excel_header_num'),
+                    t('excel_header_type'),
+                    t('excel_header_key'),
+                    t('excel_header_subno'),
+                    t('excel_header_code'),
+                    t('excel_header_scanned'),
+                    t('excel_header_boxes'),
+                    t('excel_header_tarima')
+                ];
+                rows.push(headers);
+
+                var idx = 0;
+                var filteredKeys = getFilteredMainKeys();
+                for (var i = 0; i < filteredKeys.length; i++) {
+                    var key = filteredKeys[i];
+                    var g = state.groups.find(function(gr) { return gr.key === key; });
+                    if (!g) continue;
+                    if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
+                    var typeLabel = g.type === 'fba' ? t('excel_fba') : t('excel_custom');
+                    var totalBoxes = g.items.length;
+                    var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
+                    var totalText = t('excel_total_boxes', { count: totalBoxes, caja: boxWord });
+
+                    idx++;
+                    rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
+                    // 没有批次，Tarima列留空或填""
+                    for (var j = 0; j < g.items.length; j++) {
+                        var item = g.items[j];
+                        var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+                        var scanned = state.scanStatus[item.code] || false;
+                        rows.push(['', '', '', j + 1, displayCode, scanned ? t('excel_yes') : t('excel_no'), scanned ? 1 : 0, '']);
+                    }
+                }
+
+                var ws = XLSX.utils.aoa_to_sheet(rows);
+                ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
+                var sheetName = vehicle ? 'Placas ' + vehicle : '复核清单';
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            } else {
+                // 有批次：按身份+地址+日期分组
+                var groups = {};
+
+                // 遍历批次，构造分组键
+                for (var i = 0; i < batches.length; i++) {
+                    var b = batches[i];
+                    var op = b.operator || '';
+                    var veh = b.vehicle || '';
+                    // 地址：使用保存的地址列表，若没有则用当前选中的地址
+                    var addrList = b.addresses || selectedAddresses.slice();
+                    var addrKey = addrList.length ? addrList.join(',') : '';
+                    // 日期：使用保存的日期，若没有则用当前日期
+                    var dateKey = b.createdAt || new Date().toISOString().slice(0, 10);
+                    var groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
+                    if (!groups[groupKey]) {
+                        groups[groupKey] = {
+                            operator: op,
+                            vehicle: veh,
+                            addresses: addrList,
+                            date: dateKey,
+                            batches: []
+                        };
+                    }
+                    groups[groupKey].batches.push(b);
+                }
+
+                // 遍历每个分组生成Sheet
+                for (var gKey in groups) {
+                    var group = groups[gKey];
+                    var rows = [];
+                    var now = new Date();
+                    var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    // 顶部信息：使用分组的身份和地址，日期使用分组日期（但可以显示当前时间或分组日期）
+                    // 我们使用分组日期显示在顶部，但用户可能希望显示导出日期，这里保留导出日期，同时可加一个“日期”字段表示批次日期，但需求是“导出日期”，我们使用当前导出日期。
+                    // 但用户要求“日期变动要另起一页”，我们已经按日期分组，所以每个Sheet只包含同一日期的批次。
+                    // 顶部显示扫描员、车牌、导出日期（当前）、地址。
+                    rows.push([t('excel_operator'), group.operator]);
+                    rows.push([t('excel_vehicle'), group.vehicle]);
+                    rows.push([t('excel_date'), dateStr]);
+                    var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
+                    rows.push([t('excel_address'), addrDisplay]);
+                    rows.push([]);
+
+                    // 表头
+                    var headers = [
+                        t('excel_header_num'),
+                        t('excel_header_type'),
+                        t('excel_header_key'),
+                        t('excel_header_subno'),
+                        t('excel_header_code'),
+                        t('excel_header_scanned'),
+                        t('excel_header_boxes'),
+                        t('excel_header_tarima')
+                    ];
+                    rows.push(headers);
+
+                    var idx = 0;
+                    // 遍历该组的所有批次
+                    for (var bi = 0; bi < group.batches.length; bi++) {
+                        var batch = group.batches[bi];
+                        var tarimaName = batch.name || t('excel_tarima_prefix') + (bi + 1);
+                        // 遍历批次中的主码
+                        for (var ki = 0; ki < batch.keys.length; ki++) {
+                            var key = batch.keys[ki];
+                            var g = state.groups.find(function(gr) { return gr.key === key; });
+                            if (!g) continue;
+                            // 地址过滤（如果已选地址）
+                            if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
+                            var typeLabel = g.type === 'fba' ? t('excel_fba') : t('excel_custom');
+                            var totalBoxes = g.items.length;
+                            var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
+                            var totalText = t('excel_total_boxes', { count: totalBoxes, caja: boxWord });
+
+                            idx++;
+                            rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
+
+                            for (var ji = 0; ji < g.items.length; ji++) {
+                                var item = g.items[ji];
+                                var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
+                                var scanned = state.scanStatus[item.code] || false;
+                                rows.push(['', '', '', ji + 1, displayCode, scanned ? t('excel_yes') : t('excel_no'), scanned ? 1 : 0, tarimaName]);
+                            }
+                        }
+                    }
+
+                    // 删除多余空行（但保留结构）
+                    var ws = XLSX.utils.aoa_to_sheet(rows);
+                    ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
+                    // Sheet命名：车牌+日期（避免重名）
+                    var sheetName = (group.vehicle ? 'Placas ' + group.vehicle : '') + ' ' + group.date;
+                    // 替换特殊字符（Excel工作表名限制）
+                    sheetName = sheetName.replace(/[\\:*?/\[\]]/g, '');
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
                 }
             }
-            var ws = XLSX.utils.aoa_to_sheet(rows);
-            XLSX.utils.book_append_sheet(wb, ws, '复核清单');
+
             var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             var blob = new Blob([out], { type: 'application/octet-stream' });
             var a = document.createElement('a');
@@ -1604,7 +1766,7 @@
             a.download = '复核清单_' + new Date().toISOString().slice(0, 10) + '.xlsx';
             a.click();
             URL.revokeObjectURL(a.href);
-            showToast('📊 Excel已导出', 'success');
+            showToast('📊 Excel已按身份/地址/日期分组导出', 'success');
         };
 
         // ---- 身份验证 ----
@@ -1692,13 +1854,24 @@
                 if (resetCol) resetCollapsed = JSON.parse(resetCol);
                 if (addr) { var p = JSON.parse(addr); if (Array.isArray(p)) selectedAddresses = p; }
                 if (addrColl !== null) addressCollapsed = JSON.parse(addrColl);
-                if (batchData) { var p = JSON.parse(batchData); if (Array.isArray(p)) batches = p.map(function(b) { if (b.operator === undefined) b.operator = ''; if (b.vehicle === undefined) b.vehicle = ''; return b; }); }
+                if (batchData) {
+                    var p = JSON.parse(batchData);
+                    if (Array.isArray(p)) {
+                        batches = p.map(function(b) {
+                            if (b.operator === undefined) b.operator = '';
+                            if (b.vehicle === undefined) b.vehicle = '';
+                            if (b.addresses === undefined) b.addresses = [];
+                            if (b.createdAt === undefined) b.createdAt = new Date().toISOString().slice(0, 10);
+                            return b;
+                        });
+                    }
+                }
             } catch (e) { console.warn('加载本地状态失败:', e); }
         }
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 页面初始化... (v3.3)');
+            console.log('🚀 页面初始化... (v4.0)');
             loadLocalState();
             console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
