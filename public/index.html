@@ -7,7 +7,8 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 完整样式（与之前相同，此处省略，实际包含所有样式） */
+        /* 样式与之前相同，保持不变，此处省略以节省篇幅，实际部署包含完整样式 */
+        /* 为了完整，我在此处提供完整样式（与之前相同） */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -145,14 +146,11 @@
             <small id="connectionStatus" data-i18n="disconnected">● 未连接</small>
             <button class="lang-switch" id="langSwitch" onclick="window.toggleLang()">Español</button>
         </h1>
-        <!-- 调试面板 -->
         <div id="debugPanel">
             <div><span class="info">🔍 调试信息</span></div>
             <div id="debugContent">等待连接...</div>
         </div>
-        <!-- 强制连接按钮 -->
         <button class="force-connect-btn" id="forceConnectBtn" onclick="window.forceConnect()">🔌 强制连接 WebSocket</button>
-        <!-- 状态栏 -->
         <div class="status-bar">
             <div class="status-row identity">
                 <span class="operator-info"><span class="label" id="lblOperator" data-i18n="operator">扫描员:</span> <span id="operatorDisplay">-</span></span>
@@ -166,13 +164,11 @@
                 <span><span class="label" id="lblScanned" data-i18n="scanned">已扫:</span> <span id="mySubProgress">0/0</span></span>
             </div>
         </div>
-        <!-- 已选地址 -->
         <div class="selected-addresses" id="selectedAddressesDisplay" style="display:none;">
             <span id="lblSelectedAddresses" data-i18n="selected_addresses">📍 已选地址：</span>
             <span id="addrTags"></span>
             <button class="change-btn" id="changeAddressBtn" onclick="window.changeAddress()" data-i18n="change">更改</button>
         </div>
-        <!-- 全局统计 -->
         <div class="global-stats-wrapper">
             <div class="global-stats-header" id="globalStatsToggle" onclick="window.toggleGlobalStats()">
                 <span id="lblGlobalStats" data-i18n="global_stats">📊 全局统计</span>
@@ -185,7 +181,6 @@
                 <span><span class="label" id="lblUnscannedSub" data-i18n="unscanned_sub">⬜ 未扫子码/箱数:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
             </div>
         </div>
-        <!-- 地址选择器 -->
         <div class="address-selector" id="addressSelector">
             <div class="title" id="addressToggle" onclick="window.toggleAddressCollapse()">
                 <span id="lblDeliveryAddress" data-i18n="delivery_address">📍 派送地址</span>
@@ -198,26 +193,22 @@
                 <div class="status-msg" id="addressStatusMsg"></div>
             </div>
         </div>
-        <!-- 上传 -->
         <div class="upload-zone desktop-only" id="uploadZone">
             <span style="font-size:28px;">📂</span>
             <p id="lblUploadPrompt" data-i18n="upload_prompt">点击上传出库表 (.xlsx/.xls)</p>
             <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="window.handleFile(this.files[0])">
             <div class="file-info" id="fileInfo"><span id="lblNotUploaded" data-i18n="not_uploaded">未上传</span></div>
         </div>
-        <!-- 扫描 -->
         <div class="scan-input-group">
             <input type="text" id="scanInput" placeholder="扫描条码..." autofocus>
             <button class="btn btn-primary" id="scanBtn" onclick="window.handleScan()">↵</button>
         </div>
-        <!-- 按钮 -->
         <div class="flex-row">
             <button class="btn btn-warning" id="endMainBtn" onclick="window.switchToSubMode()" data-i18n="end_main">✅ 结束主码</button>
             <button class="btn btn-danger" id="forceEndBtn" onclick="window.forceEnd()" data-i18n="force_end">⏹ 强制结束</button>
             <button class="btn btn-outline" id="resetBatchBtn" onclick="window.resetMyKeys()" data-i18n="reset_my_keys">🔄 重置我的主码</button>
             <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn" onclick="window.toggleFilterMode()" data-i18n="show_all">显示全部</button>
         </div>
-        <!-- 高级 -->
         <div class="reset-collapse-wrapper">
             <div class="reset-collapse-header" id="resetCollapseToggle" onclick="window.toggleResetCollapse()">
                 <span id="lblAdvanced" data-i18n="advanced">⚙️ 高级操作</span>
@@ -227,18 +218,15 @@
                 <button class="btn btn-outline" id="resetAllBtn" style="color:#dc2626;" onclick="window.resetAll()" data-i18n="reset_all">🔁 全部重置（清除所有数据）</button>
             </div>
         </div>
-        <!-- 清单 -->
         <div class="list-container" id="listContainer">
             <div id="listBody" style="max-height:45vh;overflow-y:auto;"></div>
         </div>
-        <!-- 导出 -->
         <div style="margin-top:10px;display:flex;gap:6px;">
             <button class="btn btn-success" id="exportTxtBtn" onclick="window.exportTxt()" data-i18n="export_txt">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn" onclick="window.exportExcel()" data-i18n="export_excel">📊 Excel</button>
         </div>
-        <div class="version-tag">v3.2 - 20260725</div>
+        <div class="version-tag">v3.3 - 20260725</div>
     </div>
-    <!-- 确认框 -->
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
             <h2 id="confirmTitle">⚠️ 确认</h2>
@@ -247,7 +235,6 @@
             <button class="btn btn-cancel" id="confirmCancelBtn" onclick="window.confirmCancel()" data-i18n="confirm_cancel">取消</button>
         </div>
     </div>
-    <!-- 身份验证模态框 -->
     <div class="modal-overlay" id="operatorModal" style="display:none;">
         <div class="modal">
             <h2 id="modalTitle" data-i18n="auth_title">🔐 身份验证</h2>
@@ -263,11 +250,11 @@
 
     <script>
         // ============================================================
-        // 版本 v3.2 - 支持自动连续扫描（无需回车）
+        // 版本 v3.3 - 增强自动连续扫描（input + keyup 防抖）
         // ============================================================
-        console.log('📦 出库核对 v3.2 - 20260725');
+        console.log('📦 出库核对 v3.3 - 20260725');
 
-        // ---- 语言包（完整双语） ----
+        // ---- 语言包（完整） ----
         var LANG = {
             zh: {
                 pageTitle: '📦 出库核对',
@@ -533,7 +520,7 @@
         var reconnectTimer = null;
         var toastTimer = null;
         var isInitialized = false;
-        var scanInputTimer = null; // 用于自动扫描的计时器
+        var scanTimer = null;
 
         // ---- DOM 引用 ----
         var scanInput = document.getElementById('scanInput');
@@ -590,7 +577,6 @@
             document.getElementById('langSwitch').textContent = next === 'zh' ? 'Español' : '中文';
         };
 
-        // ---- 更新所有 UI 文本 ----
         function updateUI() {
             console.log('🔄 执行 updateUI，当前语言:', currentLang);
             document.querySelectorAll('[data-i18n]').forEach(function(el) {
@@ -779,20 +765,27 @@
             }
         }
 
-        // ---- 自动连续扫描（核心新增） ----
-        // 监听输入变化，当内容长度大于3且稳定超过200ms时自动触发扫描
-        scanInput.addEventListener('input', function() {
-            var val = this.value.trim();
+        // ---- 自动连续扫描（增强版） ----
+        function triggerAutoScan() {
+            var val = scanInput.value.trim();
             if (val.length >= 3) {
-                if (scanInputTimer) clearTimeout(scanInputTimer);
-                scanInputTimer = setTimeout(function() {
-                    // 再次检查内容是否仍然是之前的条码（防止误触）
+                if (scanTimer) clearTimeout(scanTimer);
+                scanTimer = setTimeout(function() {
+                    // 再次检查，防止内容被清空
                     var current = scanInput.value.trim();
                     if (current.length >= 3) {
+                        updateDebug('📤 自动扫描触发: ' + current, 'info');
                         window.handleScan();
                     }
-                }, 200);
+                }, 150);
             }
+        }
+
+        // 绑定事件（兼容 input 和 keyup）
+        scanInput.addEventListener('input', triggerAutoScan);
+        scanInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') return; // 回车由原来的回车处理
+            triggerAutoScan();
         });
 
         // ---- 扫描处理 ----
@@ -808,7 +801,6 @@
             console.log('📥 原始输入:', code, '→ 提取后:', extracted);
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 showToast(t('server_error'), 'error');
-                // 重新聚焦
                 setTimeout(function() { scanInput.focus(); }, 100);
                 return;
             }
@@ -881,7 +873,6 @@
                     if (allGroups.length > 0 && allRecipients.length > 0) {
                         ws.send(JSON.stringify({ type: 'init', groups: allGroups, recipients: allRecipients, deviceId: deviceId }));
                     }
-                    // 连接成功后聚焦输入框
                     setTimeout(function() { scanInput.focus(); }, 200);
                 };
                 ws.onmessage = function(event) {
@@ -916,7 +907,6 @@
                         } else if (data.type === 'success') {
                             var msg = data.message;
                             console.log('🔍 成功消息内容:', msg);
-                            // 处理补扫
                             var patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
                             if (patchMatch) {
                                 var patchKey = patchMatch[1];
@@ -931,7 +921,6 @@
                                 setTimeout(function() { scanInput.focus(); }, 100);
                                 return;
                             }
-                            // 主码添加
                             var mainMatch = msg.match(/已添加主码:\s*([^\s]+)/);
                             if (mainMatch) {
                                 var key = mainMatch[1];
@@ -960,7 +949,6 @@
                                 setTimeout(function() { scanInput.focus(); }, 100);
                                 return;
                             }
-                            // 子码扫描
                             var subMatch = msg.match(/✅ 已扫描:\s*([^\s]+)\s*\((\d+)\/(\d+)\)/);
                             if (subMatch) {
                                 var code = subMatch[1];
@@ -1048,11 +1036,6 @@
             }
             connectWebSocket();
         };
-
-        // ---- 其余函数（结束主码、强制结束、重置、地址选择等）保持不变 ----
-        // 为避免篇幅过长，这里省略（它们与之前版本完全相同）
-        // 但为了确保完整性，在最终部署文件中会包含全部代码。
-        // 由于回复长度限制，我将在下方简要列出，实际部署请使用完整文件。
 
         // ---- 结束主码 ----
         window.switchToSubMode = function() {
@@ -1189,33 +1172,439 @@
             updateStatusBar();
         };
 
-        // ---- 渲染清单（与之前相同） ----
+        // ---- 渲染清单 ----
         function renderList() {
-            // 具体实现与之前一致，此处省略（完整代码中包含）
-            // 确保所有文本通过 t() 翻译
+            var groups = state.groups;
+            if (groups.length === 0) {
+                listBody.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + t('no_data') + '</div>';
+                return;
+            }
+            var filteredKeys = getFilteredMainKeys();
+            var html = '';
+            var globalIdx = 0;
+            var taskSet = new Set(taskKeys);
+            var pendingSet = new Set(pendingKeys);
+
+            for (var i = 0; i < groups.length; i++) {
+                var g = groups[i];
+                if (filteredKeys.length > 0 && !filteredKeys.includes(g.key)) continue;
+
+                var isTask = taskSet.has(g.key);
+                var isPending = pendingSet.has(g.key);
+                var allScanned = g.items.every(function(item) { return state.scanStatus[item.code]; });
+                var typeLabel = g.type === 'fba' ? 'FBA' : '自定义';
+                var typeClass = g.type === 'fba' ? 'fba' : 'custom';
+                var boxText = translateBoxCount(g.items.length);
+
+                if (filterMode === 'done' && !allScanned) continue;
+                if (filterMode === 'undone' && allScanned) continue;
+
+                globalIdx++;
+                var statusText = '';
+                if (isTask) statusText = '📋 ' + t('in_task');
+                else if (isPending) statusText = '⏳ ' + t('pending_to_add');
+                else statusText = '';
+                var completedText = t('completed');
+                var isActive = isTask && localMode === 'sub';
+                html += '<div class="list-item group-header ' + (isActive ? 'active' : '') + '">';
+                html += '<span>' + globalIdx + '</span>';
+                html += '<span class="code">' + g.key + ' <span class="badge">' + boxText + '</span> ' + statusText + (allScanned ? ' ✅ ' + completedText : '') + '</span>';
+                html += '<span class="badge ' + typeClass + '">' + typeLabel + '</span>';
+                html += '<span class="status">' + (allScanned ? '✅' : '⬜') + '</span>';
+                html += '</div>';
+
+                for (var j = 0; j < g.items.length; j++) {
+                    var item = g.items[j];
+                    globalIdx++;
+                    var scanned = state.scanStatus[item.code] || false;
+                    var displayCode = item.code;
+                    if (g.type === 'fba') {
+                        displayCode = g.key + '/' + (j + 1);
+                    }
+                    var isActiveItem = isTask && localMode === 'sub';
+                    html += '<div class="list-item ' + (scanned ? 'scanned' : '') + (isActiveItem ? ' active' : '') + '">';
+                    html += '<span>' + globalIdx + '</span>';
+                    html += '<span>' + displayCode + '</span>';
+                    html += '<span class="badge" style="opacity:0.5;">' + t('sub_mode') + '</span>';
+                    html += '<span class="status">' + (scanned ? '✅' : '⬜') + '</span>';
+                    html += '</div>';
+                }
+            }
+            if (html === '') {
+                var msg = filterMode === 'done' ? '暂无已完成的主码' :
+                           filterMode === 'undone' ? '暂无未完成的主码' : '没有匹配的分组';
+                html = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + msg + '</div>';
+            }
+            listBody.innerHTML = html;
+        }
+
+        // ---- 构建分组 ----
+        function buildGroupsFromRows(rows) {
+            var raw = [];
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var kVal = row.k || '';
+                var asVal = row.as || '';
+                var statusVal = row.status || '';
+                var recipient = row.recipient || '';
+                var code = kVal || asVal;
+                if (!code) continue;
+                var type = 'fba',
+                    prefix = '';
+                if (kVal) { type = 'fba';
+                    prefix = kVal; } else if (asVal) { type = 'custom';
+                    prefix = extractPrefix(asVal); } else continue;
+                raw.push({ k: kVal, as: asVal, code: asVal || kVal, prefix: prefix, type: type, status: statusVal, recipient: recipient });
+            }
+
+            var map = new Map();
+            for (var i = 0; i < raw.length; i++) {
+                var item = raw[i];
+                var key = item.prefix;
+                var gkey = key + '|' + item.type;
+                if (!map.has(gkey)) {
+                    map.set(gkey, { key: key, type: item.type, items: [], recipients: new Set(), hasCanceled: false });
+                }
+                var g = map.get(gkey);
+                g.items.push({ code: item.code, raw: item });
+                if (item.recipient) g.recipients.add(item.recipient);
+                if (item.status === '已取消') g.hasCanceled = true;
+            }
+            var groups = [];
+            for (var entry of map) {
+                var g = entry[1];
+                g.items.sort(function(a, b) {
+                    var na = parseInt(a.code.replace(/^.*?(\d+)$/, '$1'));
+                    var nb = parseInt(b.code.replace(/^.*?(\d+)$/, '$1'));
+                    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                    return a.code.localeCompare(b.code);
+                });
+                g.recipients = Array.from(g.recipients);
+                groups.push(g);
+            }
+            groups.sort(function(a, b) {
+                if (a.type !== b.type) return a.type === 'fba' ? -1 : 1;
+                return a.key.localeCompare(b.key);
+            });
+            return groups;
+        }
+
+        function extractPrefix(val) {
+            if (!val) return val;
+            var s = String(val).trim();
+            if (s.includes('/')) return s.split('/')[0].trim();
+            var m = s.match(/^(.*?[A-Za-z])U\d+$/);
+            if (m) return m[1] + 'U';
+            var m2 = s.match(/^(.*?[A-Za-z])\d+$/);
+            if (m2 && m2[1].length >= 2) return m2[1];
+            return s;
+        }
+
+        // ---- 解析文件 ----
+        function parseExcelData(rows) {
+            var kCol = null,
+                asCol = null,
+                statusCol = null,
+                recipientCol = null;
+            var headers = Object.keys(rows[0] || {});
+            console.log('📋 检测到的列名:', headers);
+
+            var excludeKeywords = ['tax', '税号', '税务'];
+
+            for (var i = 0; i < headers.length; i++) {
+                var h = headers[i];
+                var clean = h.trim();
+                if (clean.toLowerCase() === 'recipient' || clean.toLowerCase() === '收件人') {
+                    recipientCol = h;
+                    break;
+                }
+            }
+            if (!recipientCol) {
+                for (var i = 0; i < headers.length; i++) {
+                    var h = headers[i];
+                    var clean = h.trim();
+                    var lower = clean.toLowerCase();
+                    if ((lower.includes('recipient') || lower.includes('收件人')) &&
+                        !excludeKeywords.some(function(kw) { return lower.includes(kw.toLowerCase()); })) {
+                        recipientCol = h;
+                        break;
+                    }
+                }
+            }
+            if (!recipientCol) {
+                for (var i = 0; i < headers.length; i++) {
+                    var h = headers[i];
+                    var clean = h.trim();
+                    var lower = clean.toLowerCase();
+                    if (lower.includes('收件') || lower.includes('recipient')) {
+                        recipientCol = h;
+                        break;
+                    }
+                }
+            }
+            if (!recipientCol && headers.length >= 20) {
+                recipientCol = headers[19];
+                if (recipientCol && excludeKeywords.some(function(kw) { return recipientCol.toLowerCase().includes(kw.toLowerCase()); })) {
+                    recipientCol = null;
+                }
+            }
+
+            for (var i = 0; i < headers.length; i++) {
+                var h = headers[i];
+                var clean = h.trim();
+                if (clean.includes('FBA货件ID') || clean.includes('FBAShipmentID') || clean.includes('货件ID')) kCol = h;
+                if (clean.includes('Custom box barcode') || clean.includes('自定义箱条码') || clean.includes('箱条码')) asCol = h;
+                if (clean.includes('Status') || clean.includes('状态')) statusCol = h;
+            }
+            if (!kCol && !asCol) {
+                showToast(t('no_data_parsed'), 'error');
+                return null;
+            }
+
+            var parsedRows = [];
+            var recipientSet = new Set();
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var kVal = kCol ? String(row[kCol] || '').trim() : '';
+                var asVal = asCol ? String(row[asCol] || '').trim() : '';
+                var statusVal = statusCol ? String(row[statusCol] || '').trim() : '';
+                var recipient = recipientCol ? String(row[recipientCol] || '').trim() : '';
+                if (!kVal && !asVal) continue;
+                if (recipient) recipientSet.add(recipient);
+                parsedRows.push({
+                    k: kVal,
+                    as: asVal,
+                    status: statusVal,
+                    recipient: recipient
+                });
+            }
+            console.log('📌 提取到的收件人列表:', Array.from(recipientSet));
+            return { rows: parsedRows, recipients: Array.from(recipientSet) };
         }
 
         // ---- 地址选择器 ----
         function renderAddressSelector(recipients, rows, readonly) {
-            // 与之前相同
+            if (!recipients || recipients.length === 0) {
+                addressGrid.innerHTML = '<div class="address-empty-tip">' + t('no_delivery_address') + '</div>';
+                inlineSelectedCount.textContent = '0';
+                if (!readonly) {
+                    inlineConfirmAddress.textContent = t('confirm_address');
+                    inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
+                    addressStatusMsg.textContent = '';
+                    inlineConfirmAddress.onclick = function() {
+                        selectedAddresses = [];
+                        addressConfirmed = true;
+                        renderList();
+                        updateStatusBar();
+                        showToast(t('address_all'), 'success');
+                        renderAddressSelector(recipients, rows, true);
+                    };
+                } else {
+                    inlineConfirmAddress.textContent = t('change');
+                    inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
+                    addressStatusMsg.textContent = t('current_all');
+                    addressStatusMsg.style.color = '#64748b';
+                    inlineConfirmAddress.onclick = function() {
+                        renderAddressSelector(recipients, rows, false);
+                    };
+                }
+                return;
+            }
+
+            addressGrid.innerHTML = '';
+            var selected = [];
+            if (readonly && selectedAddresses.length > 0) {
+                selected = selectedAddresses.slice();
+            } else if (!readonly && selectedAddresses.length > 0) {
+                selected = selectedAddresses.slice();
+            }
+
+            for (var i = 0; i < recipients.length; i++) {
+                var addr = recipients[i];
+                var item = document.createElement('div');
+                item.className = 'address-item';
+                if (selected.includes(addr)) item.classList.add('selected');
+                if (readonly && !selected.includes(addr)) item.classList.add('disabled');
+                item.innerHTML = '<span class="checkbox"></span><span>' + addr + '</span>';
+                if (!readonly) {
+                    item.onclick = (function(a) {
+                        return function() {
+                            var idx = selected.indexOf(a);
+                            if (idx >= 0) {
+                                selected.splice(idx, 1);
+                                this.classList.remove('selected');
+                            } else {
+                                selected.push(a);
+                                this.classList.add('selected');
+                            }
+                            inlineSelectedCount.textContent = selected.length;
+                        };
+                    })(addr);
+                }
+                addressGrid.appendChild(item);
+            }
+
+            inlineSelectedCount.textContent = selected.length;
+
+            if (readonly) {
+                inlineConfirmAddress.textContent = t('change');
+                inlineConfirmAddress.className = 'btn btn-outline confirm-address-btn';
+                addressStatusMsg.textContent = t('confirmed_addresses', { count: selected.length });
+                addressStatusMsg.style.color = '#16a34a';
+                inlineConfirmAddress.onclick = function() {
+                    renderAddressSelector(recipients, rows, false);
+                };
+            } else {
+                inlineConfirmAddress.textContent = t('confirm_address');
+                inlineConfirmAddress.className = 'btn btn-primary confirm-address-btn';
+                addressStatusMsg.textContent = '';
+                inlineConfirmAddress.onclick = function() {
+                    if (selected.length === 0) {
+                        showToast(t('please_select_address'), 'warning');
+                        return;
+                    }
+                    selectedAddresses = selected;
+                    addressConfirmed = true;
+                    renderList();
+                    updateStatusBar();
+                    showToast(t('address_selected', { count: selected.length }), 'success');
+                    renderAddressSelector(recipients, rows, true);
+                };
+            }
         }
+
+        window.confirmAddressSelection = function() {
+            // 由 inlineConfirmAddress.onclick 处理
+        };
 
         // ---- 上传文件 ----
         window.handleFile = function(file) {
-            // 与之前相同
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var workbook = XLSX.read(data, { type: 'array' });
+                    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                    var parsed = parseExcelData(rows);
+                    if (!parsed) return;
+                    if (parsed.rows.length === 0) {
+                        showToast(t('no_data_parsed'), 'error');
+                        return;
+                    }
+
+                    fileInfo.innerHTML = t('parsed_info') + file.name + ' (' + parsed.rows.length + t('rows_info') + parsed.recipients.length + t('recipients_info') + ')';
+                    allRows = parsed.rows;
+
+                    var completeGroups = buildGroupsFromRows(parsed.rows);
+                    allGroups = completeGroups;
+                    var recips = parsed.recipients || [];
+                    allRecipients = recips;
+
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId: deviceId }));
+                    } else {
+                        showToast(t('waiting_upload'), 'info');
+                    }
+
+                    if (recips.length > 0) {
+                        showToast(t('no_recipient', { count: recips.length }), 'success', 3000);
+                    } else {
+                        showToast(t('no_recipient_found'), 'warning', 3000);
+                    }
+
+                    var readonly = false;
+                    if (selectedAddresses.length > 0) {
+                        var valid = selectedAddresses.every(function(a) { return recips.includes(a); });
+                        if (valid) readonly = true;
+                        else selectedAddresses = [];
+                    }
+                    renderAddressSelector(recips, parsed.rows, readonly);
+
+                } catch (err) {
+                    showToast(t('file_upload_error') + err.message, 'error');
+                    console.error('解析错误:', err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
         };
 
         // ---- 更改地址 ----
         window.changeAddress = function() {
-            // 与之前相同
+            if (allRows.length === 0) {
+                showToast(t('upload_first'), 'warning');
+                return;
+            }
+            var recips = allRecipients;
+            if (recips.length === 0) {
+                showToast(t('no_delivery_info'), 'warning');
+                return;
+            }
+            renderAddressSelector(recips, allRows, false);
         };
 
         // ---- 导出 ----
         window.exportTxt = function() {
-            // 与之前相同
+            var lines = ['复核清单', '生成: ' + new Date().toLocaleString()];
+            if (selectedAddresses.length) lines.push('收件人: ' + selectedAddresses.join(', '));
+            lines.push('─'.repeat(50));
+            for (var i = 0; i < state.groups.length; i++) {
+                var g = state.groups[i];
+                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
+                lines.push('【' + (g.type === 'fba' ? 'FBA货件' : '自定义箱条码') + ': ' + g.key + '】 ' + g.items.length + ' 箱');
+                for (var j = 0; j < g.items.length; j++) {
+                    var item = g.items[j];
+                    var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+                    var scanned = state.scanStatus[item.code] || false;
+                    lines.push('  ' + String(j + 1).padStart(3, ' ') + '. ' + (scanned ? '✅' : '⬜') + ' ' + displayCode);
+                }
+                lines.push('');
+            }
+            var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '复核清单_' + new Date().toISOString().slice(0, 10) + '.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('📄 TXT已导出', 'success');
         };
+
         window.exportExcel = function() {
-            // 与之前相同
+            var wb = XLSX.utils.book_new();
+            var rows = [];
+            var now = new Date();
+            var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            rows.push(['扫描员:', operator || '']);
+            rows.push(['车牌:', vehicle || '']);
+            rows.push(['导出日期:', dateStr]);
+            rows.push([]);
+            var headers = ['#', '分组类型', '分组Key', '子项序号', '子项条码', '已扫描', '箱数'];
+            rows.push(headers);
+            var idx = 0;
+            for (var i = 0; i < state.groups.length; i++) {
+                var g = state.groups[i];
+                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) continue;
+                idx++;
+                rows.push([idx, g.type === 'fba' ? 'FBA货件' : '自定义', g.key, '', '共' + g.items.length + '箱', '', '']);
+                for (var j = 0; j < g.items.length; j++) {
+                    var item = g.items[j];
+                    var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+                    var scanned = state.scanStatus[item.code] || false;
+                    rows.push(['', '', '', j + 1, displayCode, scanned ? '是' : '否', scanned ? 1 : 0]);
+                }
+            }
+            var ws = XLSX.utils.aoa_to_sheet(rows);
+            XLSX.utils.book_append_sheet(wb, ws, '复核清单');
+            var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            var blob = new Blob([out], { type: 'application/octet-stream' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '复核清单_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('📊 Excel已导出', 'success');
         };
 
         // ---- 身份验证 ----
@@ -1309,7 +1698,7 @@
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 页面初始化... (v3.2)');
+            console.log('🚀 页面初始化... (v3.3)');
             loadLocalState();
             console.log('📂 恢复本地状态:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
