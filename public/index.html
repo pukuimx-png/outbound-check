@@ -7,6 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
+        /* 您的原有样式（此处省略，请保留完整样式） */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -893,17 +894,19 @@
                 showToast('Ya está en modo subcódigo', 'warning');
                 return;
             }
-            // 获取当前车辆（车牌）
-var currentVehicle = vehicle || '';
-// 过滤出同一车辆的所有批次
-var sameVehicleBatches = batches.filter(function(b) { return b.vehicle === currentVehicle; });
-var nextNumber = sameVehicleBatches.length + 1;
-var batchName = 'Tarima' + nextNumber;
+            // 获取当前车辆（车牌）并去除首尾空格
+            var currentVehicle = (vehicle || '').trim();
+            // 过滤出同一车辆的所有批次（比较时也去除空格）
+            var sameVehicleBatches = batches.filter(function(b) {
+                return (b.vehicle || '').trim() === currentVehicle;
+            });
+            var nextNumber = sameVehicleBatches.length + 1;
+            var batchName = 'Tarima' + nextNumber;
             var newBatch = {
                 name: batchName,
                 keys: pendingKeys.slice(),
                 operator: operator || '',
-                vehicle: vehicle || '',
+                vehicle: currentVehicle,   // 存储规范化的车牌
                 addresses: selectedAddresses.slice(),
                 createdAt: new Date().toISOString().slice(0, 10)
             };
@@ -1337,124 +1340,88 @@ var batchName = 'Tarima' + nextNumber;
             // 由 inlineConfirmAddress.onclick 处理
         };
 
-        // ---- 上传文件（修复关键） ----
-window.exportExcel = function() {
-    var wb = XLSX.utils.book_new();
+        // ============================================================
+        // ---- 上传文件（修复关键）：插入缺失的 handleFile ----
+        // ============================================================
+        window.handleFile = function(file) {
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var workbook = XLSX.read(data, { type: 'array' });
+                    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-    // 获取当前地址筛选的主码列表（原有逻辑不变）
-    var filteredKeys = getFilteredMainKeys();
+                    var parsed = parseExcelData(rows);
+                    if (!parsed) return;
+                    if (parsed.rows.length === 0) {
+                        showToast('No se encontraron datos válidos', 'error');
+                        return;
+                    }
 
-    if (batches.length === 0) {
-        // ---------- 无批次：导出筛选后的主码 ----------
-        var rows = [];
-        var now = new Date();
-        var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        var addr = selectedAddresses.length > 0 ? selectedAddresses.join(', ') : '';
+                    fileInfo.innerHTML = '✅ Archivo parseado: ' + file.name + ' (' + parsed.rows.length + ' filas, ' + parsed.recipients.length + ' destinatarios)';
+                    allRows = parsed.rows;
 
-        rows.push(['扫描员Escaneador:', operator || '']);
-        rows.push(['车牌Placa:', vehicle || '']);
-        rows.push(['导出日期Fecha:', dateStr]);
-        rows.push(['地址Direccion de entrega:', addr]);
-        rows.push([]);
+                    var completeGroups = buildGroupsFromRows(parsed.rows);
+                    allGroups = completeGroups;
+                    var recips = parsed.recipients || [];
+                    allRecipients = recips;
 
-        var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
-        rows.push(headers);
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId: deviceId }));
+                    } else {
+                        showToast('⏳ Esperando conexión para subir datos...', 'info');
+                    }
 
-        var idx = 0;
-        for (var i = 0; i < filteredKeys.length; i++) {
-            var key = filteredKeys[i];
-            var g = state.groups.find(function(gr) { return gr.key === key; });
-            if (!g) continue;
-            var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
-            var totalBoxes = g.items.length;
-            var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
-            var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
+                    if (recips.length > 0) {
+                        showToast('📍 Se identificaron ' + recips.length + ' direcciones de destinatario', 'success', 3000);
+                    } else {
+                        showToast('⚠️ No se encontró información de destinatario', 'warning', 3000);
+                    }
 
-            idx++;
-            rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
-            for (var j = 0; j < g.items.length; j++) {
-                var item = g.items[j];
-                var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
-                var scanned = state.scanStatus[item.code] || false;
-                rows.push(['', '', '', j + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, '']);
-            }
-        }
+                    var readonly = false;
+                    if (selectedAddresses.length > 0) {
+                        var valid = selectedAddresses.every(function(a) { return recips.includes(a); });
+                        if (valid) readonly = true;
+                        else selectedAddresses = [];
+                    }
+                    renderAddressSelector(recips, parsed.rows, readonly);
 
-        if (rows.length <= 5) {
-            showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
-            return;
-        }
+                } catch (err) {
+                    showToast('❌ Error al parsear: ' + err.message, 'error');
+                    console.error('Error parsing:', err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        };
 
-        var ws = XLSX.utils.aoa_to_sheet(rows);
-        ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
-        var sheetName = vehicle ? 'Placas ' + vehicle : 'Verificacion';
-        XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    } else {
-        // ---------- 有批次：按操作员、车辆、地址、日期分组 ----------
-        var groups = {};
+        // ---- 导出 Excel ----
+        window.exportExcel = function() {
+            var wb = XLSX.utils.book_new();
 
-        for (var i = 0; i < batches.length; i++) {
-            var b = batches[i];
-            var op = b.operator || '';
-            var veh = b.vehicle || '';
-            var addrList = b.addresses || [];
-            // 只保留属于当前筛选地址的批次
-            var batchAddresses = addrList.filter(function(addr) {
-                return selectedAddresses.length === 0 || selectedAddresses.includes(addr);
-            });
-            if (batchAddresses.length === 0) continue;
+            // 获取当前地址筛选的主码列表
+            var filteredKeys = getFilteredMainKeys();
 
-            var addrKey = batchAddresses.length ? batchAddresses.join(',') : '';
-            var dateKey = b.createdAt || new Date().toISOString().slice(0, 10);
-            var groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
-            if (!groups[groupKey]) {
-                groups[groupKey] = {
-                    operator: op,
-                    vehicle: veh,
-                    addresses: batchAddresses,
-                    date: dateKey,
-                    batches: []
-                };
-            }
-            groups[groupKey].batches.push(b);
-        }
+            if (batches.length === 0) {
+                // ---------- 无批次：导出筛选后的主码 ----------
+                var rows = [];
+                var now = new Date();
+                var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                var addr = selectedAddresses.length > 0 ? selectedAddresses.join(', ') : '';
 
-        if (Object.keys(groups).length === 0) {
-            showToast('⚠️ 当前筛选条件下没有可导出的批次', 'warning');
-            return;
-        }
+                rows.push(['扫描员Escaneador:', operator || '']);
+                rows.push(['车牌Placa:', vehicle || '']);
+                rows.push(['导出日期Fecha:', dateStr]);
+                rows.push(['地址Direccion de entrega:', addr]);
+                rows.push([]);
 
-        // 为每个分组生成一个序号（用于Sheet命名）
-        var sheetIndex = 1;
+                var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
+                rows.push(headers);
 
-        for (var gKey in groups) {
-            var group = groups[gKey];
-            var rows = [];
-            var now = new Date();
-            var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
-
-            rows.push(['扫描员Escaneador:', group.operator]);
-            rows.push(['车牌Placa:', group.vehicle]);
-            rows.push(['导出日期Fecha:', dateStr]);
-            rows.push(['地址Direccion de entrega:', addrDisplay]);
-            rows.push([]);
-
-            var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
-            rows.push(headers);
-
-            var idx = 0;
-            for (var bi = 0; bi < group.batches.length; bi++) {
-                var batch = group.batches[bi];
-                var tarimaName = batch.name || 'Tarima' + (bi + 1);
-                // 只处理该批次中属于筛选地址的主码
-                var batchKeys = batch.keys.filter(function(key) {
-                    return filteredKeys.includes(key);
-                });
-                if (batchKeys.length === 0) continue;
-
-                for (var ki = 0; ki < batchKeys.length; ki++) {
-                    var key = batchKeys[ki];
+                var idx = 0;
+                for (var i = 0; i < filteredKeys.length; i++) {
+                    var key = filteredKeys[i];
                     var g = state.groups.find(function(gr) { return gr.key === key; });
                     if (!g) continue;
                     var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
@@ -1464,51 +1431,152 @@ window.exportExcel = function() {
 
                     idx++;
                     rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
-
-                    for (var ji = 0; ji < g.items.length; ji++) {
-                        var item = g.items[ji];
-                        var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
+                    for (var j = 0; j < g.items.length; j++) {
+                        var item = g.items[j];
+                        var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
                         var scanned = state.scanStatus[item.code] || false;
-                        rows.push(['', '', '', ji + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, tarimaName]);
+                        rows.push(['', '', '', j + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, '']);
                     }
+                }
+
+                if (rows.length <= 5) {
+                    showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
+                    return;
+                }
+
+                var ws = XLSX.utils.aoa_to_sheet(rows);
+                ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
+                var sheetName = vehicle ? 'Placas ' + vehicle : 'Verificacion';
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            } else {
+                // ---------- 有批次：按操作员、车辆、地址、日期分组 ----------
+                var groups = {};
+
+                for (var i = 0; i < batches.length; i++) {
+                    var b = batches[i];
+                    var op = b.operator || '';
+                    var veh = b.vehicle || '';
+                    var addrList = b.addresses || [];
+                    // 只保留属于当前筛选地址的批次
+                    var batchAddresses = addrList.filter(function(addr) {
+                        return selectedAddresses.length === 0 || selectedAddresses.includes(addr);
+                    });
+                    if (batchAddresses.length === 0) continue;
+
+                    var addrKey = batchAddresses.length ? batchAddresses.join(',') : '';
+                    var dateKey = b.createdAt || new Date().toISOString().slice(0, 10);
+                    var groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
+                    if (!groups[groupKey]) {
+                        groups[groupKey] = {
+                            operator: op,
+                            vehicle: veh,
+                            addresses: batchAddresses,
+                            date: dateKey,
+                            batches: []
+                        };
+                    }
+                    groups[groupKey].batches.push(b);
+                }
+
+                if (Object.keys(groups).length === 0) {
+                    showToast('⚠️ 当前筛选条件下没有可导出的批次', 'warning');
+                    return;
+                }
+
+                // 为每个分组生成一个序号（用于Sheet命名）
+                var sheetIndex = 1;
+
+                for (var gKey in groups) {
+                    var group = groups[gKey];
+                    var rows = [];
+                    var now = new Date();
+                    var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
+
+                    rows.push(['扫描员Escaneador:', group.operator]);
+                    rows.push(['车牌Placa:', group.vehicle]);
+                    rows.push(['导出日期Fecha:', dateStr]);
+                    rows.push(['地址Direccion de entrega:', addrDisplay]);
+                    rows.push([]);
+
+                    var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
+                    rows.push(headers);
+
+                    var idx = 0;
+                    for (var bi = 0; bi < group.batches.length; bi++) {
+                        var batch = group.batches[bi];
+                        var tarimaName = batch.name || 'Tarima' + (bi + 1);
+                        // 只处理该批次中属于筛选地址的主码
+                        var batchKeys = batch.keys.filter(function(key) {
+                            return filteredKeys.includes(key);
+                        });
+                        if (batchKeys.length === 0) continue;
+
+                        for (var ki = 0; ki < batchKeys.length; ki++) {
+                            var key = batchKeys[ki];
+                            var g = state.groups.find(function(gr) { return gr.key === key; });
+                            if (!g) continue;
+                            var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
+                            var totalBoxes = g.items.length;
+                            var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
+                            var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
+
+                            idx++;
+                            rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
+
+                            for (var ji = 0; ji < g.items.length; ji++) {
+                                var item = g.items[ji];
+                                var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
+                                var scanned = state.scanStatus[item.code] || false;
+                                rows.push(['', '', '', ji + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, tarimaName]);
+                            }
+                        }
+                    }
+
+                    if (rows.length <= 5) continue;
+
+                    // 生成简洁的 Sheet 名称：序号_车牌_日期
+                    var cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
+                    var cleanDate = group.date.replace(/[\\:*?/\[\]]/g, '');
+                    var sheetName = sheetIndex + '_' + cleanVehicle + '_' + cleanDate;
+                    if (sheetName.length > 31) {
+                        sheetName = sheetName.substring(0, 31);
+                    }
+
+                    var ws = XLSX.utils.aoa_to_sheet(rows);
+                    ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+                    sheetIndex++;
+                }
+
+                if (wb.SheetNames.length === 0) {
+                    showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
+                    return;
                 }
             }
 
-            if (rows.length <= 5) continue;
+            var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            var blob = new Blob([out], { type: 'application/octet-stream' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'Verificacion_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('📊 Excel exportado', 'success');
+        };
 
-            // ========== [修改] 生成简洁的 Sheet 名称：序号_车牌_日期 ==========
-            var cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
-            var cleanDate = group.date.replace(/[\\:*?/\[\]]/g, '');
-            var sheetName = sheetIndex + '_' + cleanVehicle + '_' + cleanDate;
-            // 确保长度不超过31字符（通常不会）
-            if (sheetName.length > 31) {
-                sheetName = sheetName.substring(0, 31);
-            }
-            // ============================================================
+        // ---- 导出 TXT ----
+        window.exportTxt = function() {
+            // 您的原有 exportTxt 逻辑（此处略，保持原样）
+            // 请确保此函数存在，否则替换时保留原代码
+        };
 
-            var ws = XLSX.utils.aoa_to_sheet(rows);
-            ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
-            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        // ---- 更改地址 ----
+        window.changeAddress = function() {
+            // 您的原有 changeAddress 逻辑（保持原样）
+        };
 
-            // 序号递增
-            sheetIndex++;
-        }
-
-        if (wb.SheetNames.length === 0) {
-            showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
-            return;
-        }
-    }
-
-    var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    var blob = new Blob([out], { type: 'application/octet-stream' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'Verificacion_' + new Date().toISOString().slice(0, 10) + '.xlsx';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    showToast('📊 Excel exportado', 'success');
-};
         // ---- 身份验证 ----
         window.showOperatorModal = function(reauth) {
             reauth = reauth || false;
@@ -1721,7 +1789,7 @@ window.exportExcel = function() {
         window.toggleAddressCollapse = toggleAddressCollapse;
         window.toggleFilterMode = toggleFilterMode;
         window.changeAddress = changeAddress;
-        window.handleFile = handleFile;
+        window.handleFile = handleFile;   // 重要：暴露上传函数
         window.exportTxt = exportTxt;
         window.exportExcel = exportExcel;
         window.confirmAddressSelection = confirmAddressSelection;
