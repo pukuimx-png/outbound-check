@@ -1,19 +1,18 @@
 {
-  "dependencies": {
-    "express": "^5.2.1",
-    "ws": "^8.21.1",
-    "xlsx": "^0.18.5"
-  },
-  "name": "pda-check",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "devDependencies": {},
+  "name": "outbound-check",
+  "version": "5.0.0",
+  "description": "Verificación de Salida - PDA with MongoDB persistence",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.13.0",
+    "mongoose": "^6.10.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "license": "ISC"
 }
