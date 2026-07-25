@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
-const fs = require('fs');
 const mongoose = require('mongoose');
 
 // ----- 连接 MongoDB -----
@@ -256,31 +255,7 @@ wss.on('connection', (ws) => {
 
 // ----- 启动服务器（先加载数据库）-----
 loadStateFromDB().then(() => {
-  // 检查 public/index.html 是否存在
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  if (!fs.existsSync(indexPath)) {
-    console.error('❌ ERROR: public/index.html NOT FOUND!');
-    console.error(`   Expected file: ${indexPath}`);
-    console.error('   Please ensure the file exists and is deployed.');
-  } else {
-    console.log('✅ public/index.html found.');
-  }
-
-  // 静态文件服务
   app.use(express.static(path.join(__dirname, 'public')));
-
-  // ✅ 显式根路由，禁用缓存
-  app.get('/', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
-
-  // ✅ Fallback 路由，所有未匹配的 GET 请求返回 index.html
-  app.get('*', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
-
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`服务器运行在 http://0.0.0.0:${PORT}`);
