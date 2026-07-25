@@ -255,17 +255,12 @@ wss.on('connection', (ws) => {
 
 // ----- 启动服务器（先加载数据库）-----
 loadStateFromDB().then(() => {
-  // 静态文件服务（用于提供 public 目录下的 CSS、JS 等）
+  // 静态文件服务
   app.use(express.static(path.join(__dirname, 'public')));
 
-  // 显式根路由，返回 index.html
+  // ✅ 显式根路由，确保返回 index.html
   app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
-
-  // 可选：对未匹配的路径返回 404
-  app.use((req, res) => {
-    res.status(404).send('Página no encontrada');
   });
 
   const PORT = process.env.PORT || 3000;
