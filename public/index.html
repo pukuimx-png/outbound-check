@@ -7,7 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* ===== 所有样式保持原样 ===== */
+        /* ===== 样式 ===== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -109,6 +109,15 @@
         #debugPanel .error { color: #dc2626; }
         #debugPanel .success { color: #16a34a; }
         #debugPanel .info { color: #2563eb; }
+        /* 新增：调试面板折叠样式 */
+        #debugContent.collapsed {
+            max-height: 0 !important;
+            padding: 0;
+            margin: 0;
+        }
+        #debugToggleIcon.rotated {
+            transform: rotate(-90deg);
+        }
         .force-connect-btn { background: #facc15; color: #1e293b; border: none; border-radius: 30px; padding: 10px 20px; font-size: 16px; font-weight: 700; width: 100%; margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .force-connect-btn:active { transform: scale(0.96); }
         .version-tag { font-size: 10px; color: #94a3b8; text-align: right; padding: 2px 4px; }
@@ -126,9 +135,13 @@
             </span>
             <small id="connectionStatus">● Desconectado</small>
         </h1>
+        <!-- 调试面板（可折叠） -->
         <div id="debugPanel">
-            <div><span class="info">🔍 Debug</span></div>
-            <div id="debugContent">Esperando conexión...</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleDebugPanel();">
+                <span class="info">🔍 Debug</span>
+                <span id="debugToggleIcon" style="font-size:14px; transition:transform 0.2s;">▼</span>
+            </div>
+            <div id="debugContent" style="transition: max-height 0.3s ease; overflow:hidden; max-height:150px;">Esperando conexión...</div>
         </div>
         <button class="force-connect-btn" id="forceConnectBtn">🔌 Forzar conexión WebSocket</button>
         <div class="status-bar">
@@ -166,7 +179,7 @@
                 <span><span class="label">📦 Total Cajas:</span> <span class="value" id="globalTotalBox">0</span></span>
                 <span><span class="label">✅ Códigos escaneados:</span> <span class="value-fraction" id="globalScanned">0/0</span></span>
                 <span><span class="label">⬜ Subcajas no escaneadas:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
-                <!-- 新增按地址统计 -->
+                <!-- 按地址统计 -->
                 <div id="addressStatsGlobal" style="width:100%; margin-top:4px; padding-top:4px; border-top:1px solid #bae6fd; display:flex; flex-wrap:wrap; gap:4px 16px; font-size:13px;"></div>
             </div>
         </div>
@@ -239,7 +252,7 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能，含地址箱数统计
+        // v5.0 - 完整功能，含调试面板折叠
         // ============================================================
         console.log('📦 Verificación de Salida v5.0 - 20260725');
 
@@ -392,6 +405,22 @@
         var cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
         var uploadZone = document.getElementById('uploadZone');
 
+        // ---- 调试面板折叠函数 ----
+        var debugCollapsed = false;
+        function toggleDebugPanel() {
+            var content = document.getElementById('debugContent');
+            var icon = document.getElementById('debugToggleIcon');
+            if (!content || !icon) return;
+            debugCollapsed = !debugCollapsed;
+            if (debugCollapsed) {
+                content.classList.add('collapsed');
+                icon.classList.add('rotated');
+            } else {
+                content.classList.remove('collapsed');
+                icon.classList.remove('rotated');
+            }
+        }
+
         // ---- 调试面板 ----
         function updateDebug(msg, type) {
             type = type || 'info';
@@ -403,8 +432,9 @@
             while (content.children.length > 10) {
                 content.removeChild(content.firstChild);
             }
+            // 如果内容超出，自动滚动到最底部
             var panel = document.getElementById('debugPanel');
-            panel.scrollTop = panel.scrollHeight;
+            if (panel) panel.scrollTop = panel.scrollHeight;
         }
 
         function updateConnectionStatus() {
@@ -564,7 +594,7 @@
                 document.getElementById('selectedAddressesDisplay').style.display = 'none';
             }
 
-            // ========== 新增：按地址统计箱数 ==========
+            // ---- 按地址统计箱数 ----
             var statsContainer = document.getElementById('addressStatsGlobal');
             if (statsContainer) {
                 var addrMap = {};
@@ -592,7 +622,6 @@
                     statsContainer.innerHTML = html;
                 }
             }
-            // =========================================
 
             saveLocalState();
 
@@ -1864,6 +1893,7 @@
         window.exportExcel = exportExcel;
         window.confirmAddressSelection = confirmAddressSelection;
         window.showOperatorModal = showOperatorModal;
+        window.toggleDebugPanel = toggleDebugPanel;
     </script>
 </body>
 </html>
