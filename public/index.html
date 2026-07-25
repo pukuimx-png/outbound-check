@@ -7,7 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* ===== 样式 ===== */
+        /* ===== 样式（完整） ===== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -109,7 +109,7 @@
         #debugPanel .error { color: #dc2626; }
         #debugPanel .success { color: #16a34a; }
         #debugPanel .info { color: #2563eb; }
-        /* 新增：调试面板折叠样式 */
+        /* 调试面板折叠 */
         #debugContent.collapsed {
             max-height: 0 !important;
             padding: 0;
@@ -135,7 +135,6 @@
             </span>
             <small id="connectionStatus">● Desconectado</small>
         </h1>
-        <!-- 调试面板（可折叠） -->
         <div id="debugPanel">
             <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleDebugPanel();">
                 <span class="info">🔍 Debug</span>
@@ -179,7 +178,6 @@
                 <span><span class="label">📦 Total Cajas:</span> <span class="value" id="globalTotalBox">0</span></span>
                 <span><span class="label">✅ Códigos escaneados:</span> <span class="value-fraction" id="globalScanned">0/0</span></span>
                 <span><span class="label">⬜ Subcajas no escaneadas:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
-                <!-- 按地址统计 -->
                 <div id="addressStatsGlobal" style="width:100%; margin-top:4px; padding-top:4px; border-top:1px solid #bae6fd; display:flex; flex-wrap:wrap; gap:4px 16px; font-size:13px;"></div>
             </div>
         </div>
@@ -252,7 +250,7 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能，含调试面板折叠
+        // v5.0 - 完整功能，含上传后自动展开地址选择器
         // ============================================================
         console.log('📦 Verificación de Salida v5.0 - 20260725');
 
@@ -405,7 +403,7 @@
         var cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
         var uploadZone = document.getElementById('uploadZone');
 
-        // ---- 调试面板折叠函数 ----
+        // ---- 调试面板折叠 ----
         var debugCollapsed = false;
         function toggleDebugPanel() {
             var content = document.getElementById('debugContent');
@@ -432,7 +430,6 @@
             while (content.children.length > 10) {
                 content.removeChild(content.firstChild);
             }
-            // 如果内容超出，自动滚动到最底部
             var panel = document.getElementById('debugPanel');
             if (panel) panel.scrollTop = panel.scrollHeight;
         }
@@ -1299,7 +1296,7 @@
             return { rows: parsedRows, recipients: Array.from(recipientSet) };
         }
 
-        // ---- 地址选择器 ----
+        // ---- 地址选择器（含自动展开） ----
         function renderAddressSelector(recipients, rows, readonly) {
             if (!recipients || recipients.length === 0) {
                 addressGrid.innerHTML = '<div class="address-empty-tip">📭 Sin direcciones de entrega, haga clic para mostrar todos los datos</div>';
@@ -1388,13 +1385,21 @@
                     renderAddressSelector(recipients, rows, true);
                 };
             }
+
+            // ===== 自动展开地址选择器 =====
+            if (recipients && recipients.length > 0) {
+                addressCollapsed = false;
+                addressBody.classList.remove('collapsed');
+                addressIcon.classList.remove('collapsed');
+                addressIcon.textContent = '▼';
+            }
         }
 
         window.confirmAddressSelection = function() {
             // 由 inlineConfirmAddress.onclick 处理
         };
 
-        // ---- 上传文件 ----
+        // ---- 上传文件（已加入强制展开） ----
         window.handleFile = function(file) {
             if (!file) return;
             var reader = new FileReader();
@@ -1439,6 +1444,10 @@
                         else selectedAddresses = [];
                     }
                     renderAddressSelector(recips, parsed.rows, readonly);
+
+                    // ===== 强制展开地址选择器并刷新UI =====
+                    addressCollapsed = false;
+                    updateStatusBar();
 
                 } catch (err) {
                     showToast('❌ Error al parsear: ' + err.message, 'error');
