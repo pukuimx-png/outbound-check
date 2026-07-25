@@ -7,7 +7,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 您的原有样式（此处省略，请保留完整样式） */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -105,33 +104,11 @@
         #confirmModal .modal { max-width: 420px; }
         #confirmModal .modal .btn { margin-top: 10px; }
         #confirmModal .modal .btn-cancel { background: #e2e8f0; color: #1e293b; }
-        #debugPanel {
-            background: #fef9c3;
-            border: 1px solid #facc15;
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin-bottom: 8px;
-            font-size: 13px;
-            color: #1e293b;
-            max-height: 150px;
-            overflow-y: auto;
-        }
+        #debugPanel { background: #fef9c3; border: 1px solid #facc15; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; font-size: 13px; color: #1e293b; max-height: 150px; overflow-y: auto; }
         #debugPanel .error { color: #dc2626; }
         #debugPanel .success { color: #16a34a; }
         #debugPanel .info { color: #2563eb; }
-        .force-connect-btn {
-            background: #facc15;
-            color: #1e293b;
-            border: none;
-            border-radius: 30px;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: 700;
-            width: 100%;
-            margin-bottom: 8px;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+        .force-connect-btn { background: #facc15; color: #1e293b; border: none; border-radius: 30px; padding: 10px 20px; font-size: 16px; font-weight: 700; width: 100%; margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .force-connect-btn:active { transform: scale(0.96); }
         .version-tag { font-size: 10px; color: #94a3b8; text-align: right; padding: 2px 4px; }
     </style>
@@ -151,7 +128,7 @@
             <div class="status-row identity">
                 <span class="operator-info"><span class="label">Operador:</span> <span id="operatorDisplay">-</span></span>
                 <span class="operator-info"><span class="label">Matrícula:</span> <span id="vehicleDisplay">-</span></span>
-                <button class="change-identity-btn" id="changeIdentityBtn">🔄 Cambio operador</button>
+                <button class="change-identity-btn" id="changeIdentityBtn" onclick="window.showOperatorModal(true);">🔄 Cambio operador</button>
             </div>
             <div class="status-row progress">
                 <span><span class="label">Modo local:</span> <span id="modeDisplay">Código principal</span></span>
@@ -246,14 +223,13 @@
 
     <script>
         // ============================================================
-        // v5.0 - Only Spanish, fixed file upload, 90ms debounce
+        // v5.0 - 所有功能完整，修复 PDA 触摸与缺失函数
         // ============================================================
         console.log('📦 Verificación de Salida v5.0 - 20260725');
 
-        // ---- 语言文本（全部西语） ----
+        // ---- 语言文本 ----
         var LANG = {
             es: {
-                // 所有界面文本已硬编码在 HTML 中，此处仅用于动态消息
                 connection: '● Conectado',
                 disconnected: '● Desconectado',
                 connected: '✅ Conectado al servidor',
@@ -304,7 +280,6 @@
                 task_invalid: '🔄 Tarea inválida, cambiando a modo código',
                 scanned_complete: '🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código',
                 force_end_confirm: '¿Forzar finalización?\nRestan {remaining} subcódigos por escanear, la tarea se conservará para completar.',
-                // Excel
                 excel_operator: '扫描员Escaneador:',
                 excel_vehicle: '车牌Placa:',
                 excel_date: '导出日期Fecha:',
@@ -692,14 +667,11 @@
                         console.log('📨 Mensaje recibido:', data);
                         if (data.type === 'state') {
                             state = data.state;
-                            // ---- 同步批次 ----
                             if (state.batches) {
                                 batches = state.batches;
                             }
-                            // ---- 检查重置标志 ----
                             if (state.resetPending === true && !resetHandledThisSession) {
                                 resetHandledThisSession = true;
-                                // 执行本地重置
                                 localStorage.removeItem('operator');
                                 localStorage.removeItem('vehicle');
                                 localStorage.removeItem('pda_selectedAddresses');
@@ -730,7 +702,6 @@
                                 renderList();
                                 updateStatusBar();
                             }
-                            // ---- 原有过滤逻辑 ----
                             taskKeys = taskKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
                             pendingKeys = pendingKeys.filter(function(k) { return state.selectedMainKeys.includes(k); });
                             if (localMode === 'sub' && taskKeys.length === 0) {
@@ -894,25 +865,21 @@
                 showToast('Ya está en modo subcódigo', 'warning');
                 return;
             }
-            // 获取当前车辆（车牌）并去除首尾空格
+            // 获取当前车辆（车牌）
             var currentVehicle = (vehicle || '').trim();
-            // 过滤出同一车辆的所有批次（比较时也去除空格）
-            var sameVehicleBatches = batches.filter(function(b) {
-                return (b.vehicle || '').trim() === currentVehicle;
-            });
+            var sameVehicleBatches = batches.filter(function(b) { return (b.vehicle || '').trim() === currentVehicle; });
             var nextNumber = sameVehicleBatches.length + 1;
             var batchName = 'Tarima' + nextNumber;
             var newBatch = {
                 name: batchName,
                 keys: pendingKeys.slice(),
                 operator: operator || '',
-                vehicle: currentVehicle,   // 存储规范化的车牌
+                vehicle: currentVehicle,
                 addresses: selectedAddresses.slice(),
                 createdAt: new Date().toISOString().slice(0, 10)
             };
             batches.push(newBatch);
             saveLocalState();
-            // 发送到服务器
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'add_batch', batch: newBatch }));
             }
@@ -1340,9 +1307,7 @@
             // 由 inlineConfirmAddress.onclick 处理
         };
 
-        // ============================================================
-        // ---- 上传文件（修复关键）：插入缺失的 handleFile ----
-        // ============================================================
+        // ---- 上传文件 ----
         window.handleFile = function(file) {
             if (!file) return;
             var reader = new FileReader();
@@ -1396,15 +1361,50 @@
             reader.readAsArrayBuffer(file);
         };
 
+        // ---- 导出 TXT ----
+        window.exportTxt = function() {
+            var lines = ['Lista de verificación', 'Generado: ' + new Date().toLocaleString()];
+            if (selectedAddresses.length) lines.push('Destinatarios: ' + selectedAddresses.join(', '));
+            lines.push('─'.repeat(50));
+
+            var groups = state.groups;
+            var hasData = false;
+            for (var i = 0; i < groups.length; i++) {
+                var g = groups[i];
+                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) {
+                    continue;
+                }
+                hasData = true;
+                lines.push('【' + (g.type === 'fba' ? 'FBA' : 'Custom') + ': ' + g.key + '】 ' + g.items.length + ' cajas');
+                for (var j = 0; j < g.items.length; j++) {
+                    var item = g.items[j];
+                    var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+                    var scanned = state.scanStatus[item.code] || false;
+                    lines.push('  ' + String(j + 1).padStart(3, ' ') + '. ' + (scanned ? '✅' : '⬜') + ' ' + displayCode);
+                }
+                lines.push('');
+            }
+
+            if (!hasData) {
+                showToast('⚠️ 没有数据可导出', 'warning');
+                return;
+            }
+
+            var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'Verificacion_' + new Date().toISOString().slice(0, 10) + '.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('📄 TXT exportado', 'success');
+        };
+
         // ---- 导出 Excel ----
         window.exportExcel = function() {
             var wb = XLSX.utils.book_new();
-
-            // 获取当前地址筛选的主码列表
             var filteredKeys = getFilteredMainKeys();
 
             if (batches.length === 0) {
-                // ---------- 无批次：导出筛选后的主码 ----------
                 var rows = [];
                 var now = new Date();
                 var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1449,7 +1449,6 @@
                 var sheetName = vehicle ? 'Placas ' + vehicle : 'Verificacion';
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
             } else {
-                // ---------- 有批次：按操作员、车辆、地址、日期分组 ----------
                 var groups = {};
 
                 for (var i = 0; i < batches.length; i++) {
@@ -1457,7 +1456,6 @@
                     var op = b.operator || '';
                     var veh = b.vehicle || '';
                     var addrList = b.addresses || [];
-                    // 只保留属于当前筛选地址的批次
                     var batchAddresses = addrList.filter(function(addr) {
                         return selectedAddresses.length === 0 || selectedAddresses.includes(addr);
                     });
@@ -1483,9 +1481,7 @@
                     return;
                 }
 
-                // 为每个分组生成一个序号（用于Sheet命名）
                 var sheetIndex = 1;
-
                 for (var gKey in groups) {
                     var group = groups[gKey];
                     var rows = [];
@@ -1506,7 +1502,6 @@
                     for (var bi = 0; bi < group.batches.length; bi++) {
                         var batch = group.batches[bi];
                         var tarimaName = batch.name || 'Tarima' + (bi + 1);
-                        // 只处理该批次中属于筛选地址的主码
                         var batchKeys = batch.keys.filter(function(key) {
                             return filteredKeys.includes(key);
                         });
@@ -1535,7 +1530,6 @@
 
                     if (rows.length <= 5) continue;
 
-                    // 生成简洁的 Sheet 名称：序号_车牌_日期
                     var cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
                     var cleanDate = group.date.replace(/[\\:*?/\[\]]/g, '');
                     var sheetName = sheetIndex + '_' + cleanVehicle + '_' + cleanDate;
@@ -1546,7 +1540,6 @@
                     var ws = XLSX.utils.aoa_to_sheet(rows);
                     ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
                     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-
                     sheetIndex++;
                 }
 
@@ -1566,15 +1559,18 @@
             showToast('📊 Excel exportado', 'success');
         };
 
-        // ---- 导出 TXT ----
-        window.exportTxt = function() {
-            // 您的原有 exportTxt 逻辑（此处略，保持原样）
-            // 请确保此函数存在，否则替换时保留原代码
-        };
-
         // ---- 更改地址 ----
         window.changeAddress = function() {
-            // 您的原有 changeAddress 逻辑（保持原样）
+            if (allRows.length === 0) {
+                showToast('Primero cargue un archivo', 'warning');
+                return;
+            }
+            var recips = allRecipients;
+            if (recips.length === 0) {
+                showToast('Sin información de destinatario, no se puede seleccionar', 'warning');
+                return;
+            }
+            renderAddressSelector(recips, allRows, false);
         };
 
         // ---- 身份验证 ----
@@ -1678,6 +1674,45 @@
             } catch (e) { console.warn('Error cargando estado local:', e); }
         }
 
+        // ---- 事件绑定 ----
+        function bindEvents() {
+            changeIdentityBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.showOperatorModal(true);
+            });
+            changeIdentityBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                window.showOperatorModal(true);
+            }, { passive: false });
+            changeIdentityBtn.addEventListener('pointerdown', function(e) {
+                e.preventDefault();
+                window.showOperatorModal(true);
+            });
+
+            forceConnectBtn.addEventListener('click', window.forceConnect);
+            forceConnectBtn.addEventListener('touchstart', window.forceConnect, { passive: false });
+
+            confirmOkBtn.addEventListener('click', window.confirmOk);
+            confirmCancelBtn.addEventListener('click', window.confirmCancel);
+
+            confirmOperatorBtn.addEventListener('click', window.confirmIdentity);
+            cancelOperatorBtn.addEventListener('click', window.cancelIdentity);
+
+            document.getElementById('globalStatsToggle').addEventListener('click', window.toggleGlobalStats);
+            document.getElementById('resetCollapseToggle').addEventListener('click', window.toggleResetCollapse);
+            document.getElementById('addressToggle').addEventListener('click', window.toggleAddressCollapse);
+
+            document.getElementById('endMainBtn').addEventListener('click', window.switchToSubMode);
+            document.getElementById('forceEndBtn').addEventListener('click', window.forceEnd);
+            document.getElementById('resetBatchBtn').addEventListener('click', window.resetMyKeys);
+            document.getElementById('resetAllBtn').addEventListener('click', window.resetAll);
+            document.getElementById('exportTxtBtn').addEventListener('click', window.exportTxt);
+            document.getElementById('exportExcelBtn').addEventListener('click', window.exportExcel);
+            document.getElementById('changeAddressBtn').addEventListener('click', window.changeAddress);
+            document.getElementById('toggleDoneBtn').addEventListener('click', window.toggleFilterMode);
+            document.getElementById('inlineConfirmAddress').addEventListener('click', window.confirmAddressSelection);
+        }
+
         // ---- 初始化 ----
         function init() {
             console.log('🚀 Inicializando... (v5.0)');
@@ -1705,31 +1740,6 @@
                 window.showOperatorModal(false);
             }
 
-            // ---- Event bindings ----
-            function bindEvents() {
-                changeIdentityBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    window.showOperatorModal(true);
-                });
-                changeIdentityBtn.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    window.showOperatorModal(true);
-                }, { passive: false });
-
-                forceConnectBtn.addEventListener('click', window.forceConnect);
-                forceConnectBtn.addEventListener('touchstart', window.forceConnect, { passive: false });
-
-                confirmOkBtn.addEventListener('click', window.confirmOk);
-                confirmCancelBtn.addEventListener('click', window.confirmCancel);
-
-                confirmOperatorBtn.addEventListener('click', window.confirmIdentity);
-                cancelOperatorBtn.addEventListener('click', window.cancelIdentity);
-
-                document.getElementById('globalStatsToggle').addEventListener('click', window.toggleGlobalStats);
-                document.getElementById('resetCollapseToggle').addEventListener('click', window.toggleResetCollapse);
-                document.getElementById('addressToggle').addEventListener('click', window.toggleAddressCollapse);
-            }
-
             bindEvents();
 
             fileInput.addEventListener('change', function(e) {
@@ -1738,10 +1748,7 @@
                 }
                 this.value = '';
             });
-
-            uploadZone.addEventListener('click', function() {
-                fileInput.click();
-            });
+            uploadZone.addEventListener('click', function() { fileInput.click(); });
 
             document.getElementById('scanBtn').addEventListener('click', window.handleScan);
             scanInput.addEventListener('keydown', function(e) {
@@ -1751,28 +1758,20 @@
                 }
             });
 
-            document.getElementById('endMainBtn').addEventListener('click', window.switchToSubMode);
-            document.getElementById('forceEndBtn').addEventListener('click', window.forceEnd);
-            document.getElementById('resetBatchBtn').addEventListener('click', window.resetMyKeys);
-            document.getElementById('resetAllBtn').addEventListener('click', window.resetAll);
-            document.getElementById('exportTxtBtn').addEventListener('click', window.exportTxt);
-            document.getElementById('exportExcelBtn').addEventListener('click', window.exportExcel);
-            document.getElementById('changeAddressBtn').addEventListener('click', window.changeAddress);
-            document.getElementById('toggleDoneBtn').addEventListener('click', window.toggleFilterMode);
-            document.getElementById('inlineConfirmAddress').addEventListener('click', window.confirmAddressSelection);
-
             updateUI();
             updateStatusBar();
             renderList();
             setTimeout(function() { scanInput.focus(); }, 500);
         }
 
+        // ---- 启动 ----
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
         }
 
+        // ---- 全局暴露 ----
         window.connectWebSocket = connectWebSocket;
         window.handleScan = handleScan;
         window.forceConnect = forceConnect;
@@ -1789,7 +1788,7 @@
         window.toggleAddressCollapse = toggleAddressCollapse;
         window.toggleFilterMode = toggleFilterMode;
         window.changeAddress = changeAddress;
-        window.handleFile = handleFile;   // 重要：暴露上传函数
+        window.handleFile = handleFile;
         window.exportTxt = exportTxt;
         window.exportExcel = exportExcel;
         window.confirmAddressSelection = confirmAddressSelection;
