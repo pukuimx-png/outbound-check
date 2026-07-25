@@ -7,7 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* ===== 所有样式 ===== */
+        /* ===== 所有样式保持原样 ===== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -27,7 +27,7 @@
         .global-stats-header { background: #e0f2fe; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; font-weight: 600; font-size: 14px; color: #0369a1; }
         .global-stats-header .toggle-icon { font-size: 16px; transition: transform 0.2s; }
         .global-stats-header .toggle-icon.collapsed { transform: rotate(-90deg); }
-        .global-stats-content { background: #f0f9ff; padding: 8px 12px; display: flex; flex-wrap: wrap; justify-content: space-between; font-size: 13px; gap: 4px; transition: max-height 0.3s ease; max-height: 150px; overflow: hidden; }
+        .global-stats-content { background: #f0f9ff; padding: 8px 12px; display: flex; flex-wrap: wrap; justify-content: space-between; font-size: 13px; gap: 4px; transition: max-height 0.3s ease; max-height: 300px; overflow: hidden; }
         .global-stats-content.collapsed { max-height: 0; padding: 0 12px; border-top: 0; }
         .global-stats-content .label { color: #0369a1; }
         .global-stats-content .value { font-weight: 700; color: #0c4a6e; }
@@ -136,8 +136,10 @@
                 <span class="operator-info"><span class="label">Operador:</span> <span id="operatorDisplay">-</span></span>
                 <span class="operator-info"><span class="label">Matrícula:</span> <span id="vehicleDisplay">-</span></span>
                 <div class="change-identity-btn" id="changeIdentityBtn" 
-                     style="display:inline-block; padding:0 14px; background:#2563eb; color:white; border-radius:30px; cursor:pointer; line-height:30px; font-size:14px; font-weight:600; touch-action:manipulation;"
+                     style="display:inline-block; padding:6px 20px; background:#2563eb; color:white; border-radius:30px; cursor:pointer; line-height:34px; font-size:16px; font-weight:600; touch-action:manipulation; user-select:none;"
                      ontouchstart="window.showOperatorModal(true);" 
+                     ontouchmove="event.preventDefault();"
+                     onmousedown="window.showOperatorModal(true);"
                      onclick="window.showOperatorModal(true);">
                     🔄 Cambio operador
                 </div>
@@ -164,6 +166,8 @@
                 <span><span class="label">📦 Total Cajas:</span> <span class="value" id="globalTotalBox">0</span></span>
                 <span><span class="label">✅ Códigos escaneados:</span> <span class="value-fraction" id="globalScanned">0/0</span></span>
                 <span><span class="label">⬜ Subcajas no escaneadas:</span> <span class="value-fraction" id="globalUnscanned">0/0</span></span>
+                <!-- 新增按地址统计 -->
+                <div id="addressStatsGlobal" style="width:100%; margin-top:4px; padding-top:4px; border-top:1px solid #bae6fd; display:flex; flex-wrap:wrap; gap:4px 16px; font-size:13px;"></div>
             </div>
         </div>
         <div class="address-selector" id="addressSelector">
@@ -235,11 +239,11 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能，修复 PDA 触摸与焦点问题
+        // v5.0 - 完整功能，含地址箱数统计
         // ============================================================
         console.log('📦 Verificación de Salida v5.0 - 20260725');
 
-        // ---- 语言文本（完整） ----
+        // ---- 语言文本 ----
         var LANG = {
             es: {
                 connection: '● Conectado',
@@ -560,6 +564,36 @@
                 document.getElementById('selectedAddressesDisplay').style.display = 'none';
             }
 
+            // ========== 新增：按地址统计箱数 ==========
+            var statsContainer = document.getElementById('addressStatsGlobal');
+            if (statsContainer) {
+                var addrMap = {};
+                for (var i = 0; i < state.groups.length; i++) {
+                    var g = state.groups[i];
+                    var addrKey = (g.recipients && g.recipients.length > 0) ? g.recipients.join(', ') : 'Sin dirección';
+                    if (!addrMap[addrKey]) {
+                        addrMap[addrKey] = { total: 0, scanned: 0 };
+                    }
+                    addrMap[addrKey].total += g.items.length;
+                    var scannedCount = g.items.filter(function(item) {
+                        return state.scanStatus[item.code] || false;
+                    }).length;
+                    addrMap[addrKey].scanned += scannedCount;
+                }
+                var html = '';
+                for (var addr in addrMap) {
+                    var info = addrMap[addr];
+                    html += '<span>' + addr + ': <span style="font-weight:700;">' + info.scanned + '/' + info.total + '</span></span>';
+                }
+                if (html === '') {
+                    statsContainer.style.display = 'none';
+                } else {
+                    statsContainer.style.display = 'flex';
+                    statsContainer.innerHTML = html;
+                }
+            }
+            // =========================================
+
             saveLocalState();
 
             if (localMode === 'sub' && taskKeys.length > 0 && stats.total > 0 && stats.scanned === stats.total) {
@@ -867,7 +901,7 @@
             connectWebSocket();
         };
 
-        // ---- 结束主码（已修改 Tarima 编号） ----
+        // ---- 结束主码 ----
         window.switchToSubMode = function() {
             if (pendingKeys.length === 0) {
                 showToast('No ha agregado ningún código', 'warning');
@@ -1597,9 +1631,7 @@
             renderAddressSelector(recips, allRows, false);
         };
 
-        // ============================================================
-        // 关键：showOperatorModal / hideOperatorModal 控制焦点
-        // ============================================================
+        // ---- 身份验证 ----
         window.showOperatorModal = function(reauth) {
             reauth = reauth || false;
             console.log('📌 showOperatorModal llamada, reauth=', reauth);
@@ -1653,7 +1685,7 @@
             vehicleDisplay.textContent = vehicle;
             hideOperatorModal();
             showToast('✅ Identidad actualizada', 'success', 2000);
-            scanInput.focus(); // 确认后聚焦扫描框（如果需要）
+            scanInput.focus();
             if (!isInitialized) {
                 isInitialized = true;
                 if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -1752,60 +1784,56 @@
 
         // ---- 初始化 ----
         function init() {
-    console.log('🚀 Inicializando... (v5.0)');
-    loadLocalState();
-    console.log('📂 Estado local:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
+            console.log('🚀 Inicializando... (v5.0)');
+            loadLocalState();
+            console.log('📂 Estado local:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
-    var savedOperator = localStorage.getItem('operator');
-    var savedVehicle = localStorage.getItem('vehicle');
-    if (savedOperator && savedVehicle) {
-        operator = savedOperator;
-        vehicle = savedVehicle;
-        operatorDisplay.textContent = operator;
-        vehicleDisplay.textContent = vehicle;
-        isInitialized = true;
-        connectWebSocket();
-    } else {
-        operator = 'PDA';
-        vehicle = 'DEV';
-        localStorage.setItem('operator', operator);
-        localStorage.setItem('vehicle', vehicle);
-        operatorDisplay.textContent = operator;
-        vehicleDisplay.textContent = vehicle;
-        isInitialized = true;
-        connectWebSocket();
-    }
+            var savedOperator = localStorage.getItem('operator');
+            var savedVehicle = localStorage.getItem('vehicle');
+            if (savedOperator && savedVehicle) {
+                operator = savedOperator;
+                vehicle = savedVehicle;
+                operatorDisplay.textContent = operator;
+                vehicleDisplay.textContent = vehicle;
+                isInitialized = true;
+                connectWebSocket();
+            } else {
+                operator = 'PDA';
+                vehicle = 'DEV';
+                localStorage.setItem('operator', operator);
+                localStorage.setItem('vehicle', vehicle);
+                operatorDisplay.textContent = operator;
+                vehicleDisplay.textContent = vehicle;
+                isInitialized = true;
+                connectWebSocket();
+                setTimeout(function() {
+                    window.showOperatorModal(false);
+                }, 800);
+            }
 
-    // ===== 强制弹出认证框（无需点击） =====
-    // 无论是否已保存身份，都弹出（用户可取消或确认）
-    setTimeout(function() {
-        window.showOperatorModal(false);
-    }, 1000);
-    // =====================================
+            bindEvents();
 
-    bindEvents();
+            fileInput.addEventListener('change', function(e) {
+                if (this.files.length) {
+                    window.handleFile(this.files[0]);
+                }
+                this.value = '';
+            });
+            uploadZone.addEventListener('click', function() { fileInput.click(); });
 
-    fileInput.addEventListener('change', function(e) {
-        if (this.files.length) {
-            window.handleFile(this.files[0]);
+            document.getElementById('scanBtn').addEventListener('click', window.handleScan);
+            scanInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    window.handleScan();
+                }
+            });
+
+            updateUI();
+            updateStatusBar();
+            renderList();
+            setTimeout(function() { scanInput.focus(); }, 500);
         }
-        this.value = '';
-    });
-    uploadZone.addEventListener('click', function() { fileInput.click(); });
-
-    document.getElementById('scanBtn').addEventListener('click', window.handleScan);
-    scanInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            window.handleScan();
-        }
-    });
-
-    updateUI();
-    updateStatusBar();
-    renderList();
-    setTimeout(function() { scanInput.focus(); }, 500);
-}
 
         // ---- 启动 ----
         if (document.readyState === 'loading') {
