@@ -1341,11 +1341,11 @@ var batchName = 'Tarima' + nextNumber;
 window.exportExcel = function() {
     var wb = XLSX.utils.book_new();
 
-    // 获取当前地址筛选的主码列表
+    // 获取当前地址筛选的主码列表（原有逻辑不变）
     var filteredKeys = getFilteredMainKeys();
 
     if (batches.length === 0) {
-        // 无批次：直接导出筛选后的主码
+        // ---------- 无批次：导出筛选后的主码 ----------
         var rows = [];
         var now = new Date();
         var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -1380,7 +1380,7 @@ window.exportExcel = function() {
             }
         }
 
-        if (rows.length <= 5) { // 只有标题没有数据
+        if (rows.length <= 5) {
             showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
             return;
         }
@@ -1390,7 +1390,7 @@ window.exportExcel = function() {
         var sheetName = vehicle ? 'Placas ' + vehicle : 'Verificacion';
         XLSX.utils.book_append_sheet(wb, ws, sheetName);
     } else {
-        // 有批次：按批次分组，同时过滤地址
+        // ---------- 有批次：按操作员、车辆、地址、日期分组 ----------
         var groups = {};
 
         for (var i = 0; i < batches.length; i++) {
@@ -1398,11 +1398,11 @@ window.exportExcel = function() {
             var op = b.operator || '';
             var veh = b.vehicle || '';
             var addrList = b.addresses || [];
-            // 只处理属于当前筛选地址的批次
+            // 只保留属于当前筛选地址的批次
             var batchAddresses = addrList.filter(function(addr) {
                 return selectedAddresses.length === 0 || selectedAddresses.includes(addr);
             });
-            if (batchAddresses.length === 0) continue; // 该批次的所有地址都不在筛选中，跳过
+            if (batchAddresses.length === 0) continue;
 
             var addrKey = batchAddresses.length ? batchAddresses.join(',') : '';
             var dateKey = b.createdAt || new Date().toISOString().slice(0, 10);
@@ -1419,11 +1419,13 @@ window.exportExcel = function() {
             groups[groupKey].batches.push(b);
         }
 
-        // 如果没有匹配的批次，提示
         if (Object.keys(groups).length === 0) {
             showToast('⚠️ 当前筛选条件下没有可导出的批次', 'warning');
             return;
         }
+
+        // 为每个分组生成一个序号（用于Sheet命名）
+        var sheetIndex = 1;
 
         for (var gKey in groups) {
             var group = groups[gKey];
@@ -1449,12 +1451,12 @@ window.exportExcel = function() {
                 var batchKeys = batch.keys.filter(function(key) {
                     return filteredKeys.includes(key);
                 });
-                if (batchKeys.length === 0) continue; // 该批次没有匹配的主码，跳过
+                if (batchKeys.length === 0) continue;
 
                 for (var ki = 0; ki < batchKeys.length; ki++) {
                     var key = batchKeys[ki];
                     var g = state.groups.find(function(gr) { return gr.key === key; });
-                    if (!g) continue; // 主码已被删除，跳过
+                    if (!g) continue;
                     var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
                     var totalBoxes = g.items.length;
                     var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
@@ -1472,17 +1474,26 @@ window.exportExcel = function() {
                 }
             }
 
-            // 如果该分组没有实际数据行，跳过此Sheet
             if (rows.length <= 5) continue;
+
+            // ========== [修改] 生成简洁的 Sheet 名称：序号_车牌_日期 ==========
+            var cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
+            var cleanDate = group.date.replace(/[\\:*?/\[\]]/g, '');
+            var sheetName = sheetIndex + '_' + cleanVehicle + '_' + cleanDate;
+            // 确保长度不超过31字符（通常不会）
+            if (sheetName.length > 31) {
+                sheetName = sheetName.substring(0, 31);
+            }
+            // ============================================================
 
             var ws = XLSX.utils.aoa_to_sheet(rows);
             ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
-            var sheetName = (group.vehicle ? 'Placas ' + group.vehicle : '') + ' ' + group.date;
-            sheetName = sheetName.replace(/[\\:*?/\[\]]/g, '');
             XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+            // 序号递增
+            sheetIndex++;
         }
 
-        // 如果所有分组都无数据，提示
         if (wb.SheetNames.length === 0) {
             showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
             return;
