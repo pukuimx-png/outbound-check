@@ -18,7 +18,8 @@ const StateSchema = new mongoose.Schema({
     groups: Array,
     selectedMainKeys: [String],
     scanStatus: Object,
-    resetPending: Boolean
+    resetPending: Boolean,
+    batches: Array
   },
   recipients: [String]
 }, { collection: 'state' });
@@ -35,7 +36,8 @@ let state = {
   groups: [],
   selectedMainKeys: [],
   scanStatus: {},
-  resetPending: false
+  resetPending: false,
+  batches: []
 };
 let recipients = [];
 let mainKeyOwners = {};
@@ -232,6 +234,14 @@ wss.on('connection', (ws) => {
         case 'reset_confirmed': {
           state.resetPending = false;
           broadcast();
+          break;
+        }
+        case 'add_batch': {
+          const { batch } = data;
+          if (batch) {
+            state.batches.push(batch);
+            broadcast();
+          }
           break;
         }
         default:
