@@ -893,7 +893,12 @@
                 showToast('Ya está en modo subcódigo', 'warning');
                 return;
             }
-            var batchName = 'Tarima' + (batches.length + 1);
+            // 获取当前车辆（车牌）
+var currentVehicle = vehicle || '';
+// 过滤出同一车辆的所有批次
+var sameVehicleBatches = batches.filter(function(b) { return b.vehicle === currentVehicle; });
+var nextNumber = sameVehicleBatches.length + 1;
+var batchName = 'Tarima' + nextNumber;
             var newBatch = {
                 name: batchName,
                 keys: pendingKeys.slice(),
