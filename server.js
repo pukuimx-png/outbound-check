@@ -52,7 +52,6 @@ async function loadStateFromDB() {
       console.log('📂 Estado cargado desde MongoDB');
     } else {
       console.log('📂 No hay documento en DB, usando estado inicial');
-      // 可选：创建初始文档
       await StateModel.create({ state, recipients });
     }
   } catch (err) {
@@ -73,7 +72,7 @@ async function saveStateToDB() {
   }
 }
 
-// 业务函数（与原来完全一致，只是广播后增加保存）
+// 业务函数
 function isMainCompleted(key) {
   const g = state.groups.find(gr => gr.key === key);
   if (!g) return false;
@@ -85,7 +84,7 @@ function broadcast() {
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) client.send(data);
   });
-  saveStateToDB(); // 异步保存
+  saveStateToDB();
 }
 
 function broadcastRecipients() {
@@ -106,7 +105,7 @@ function initState(groupsData) {
       state.scanStatus[item.code] = false;
     }
   }
-  state.resetPending = true;   // 上传新文件时触发重置
+  state.resetPending = true;
   broadcast();
 }
 
@@ -256,7 +255,19 @@ wss.on('connection', (ws) => {
 
 // ----- 启动服务器（先加载数据库）-----
 loadStateFromDB().then(() => {
+  // 静态文件服务（用于提供 public 目录下的 CSS、JS 等）
   app.use(express.static(path.join(__dirname, 'public')));
+
+  // 显式根路由，返回 index.html
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+
+  // 可选：对未匹配的路径返回 404
+  app.use((req, res) => {
+    res.status(404).send('Página no encontrada');
+  });
+
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`服务器运行在 http://0.0.0.0:${PORT}`);
