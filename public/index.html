@@ -128,7 +128,11 @@
             <div class="status-row identity">
                 <span class="operator-info"><span class="label">Operador:</span> <span id="operatorDisplay">-</span></span>
                 <span class="operator-info"><span class="label">Matrícula:</span> <span id="vehicleDisplay">-</span></span>
-                <button class="change-identity-btn" id="changeIdentityBtn" onclick="window.showOperatorModal(true);">🔄 Cambio operador</button>
+                <button class="change-identity-btn" id="changeIdentityBtn" 
+    onclick="window.showOperatorModal(true);" 
+    ontouchstart="window.showOperatorModal(true);">
+    🔄 Cambio operador
+</button>
             </div>
             <div class="status-row progress">
                 <span><span class="label">Modo local:</span> <span id="modeDisplay">Código principal</span></span>
