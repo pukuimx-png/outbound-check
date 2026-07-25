@@ -126,14 +126,16 @@
         <button class="force-connect-btn" id="forceConnectBtn">🔌 Forzar conexión WebSocket</button>
         <div class="status-bar">
             <div class="status-row identity">
-                <span class="operator-info"><span class="label">Operador:</span> <span id="operatorDisplay">-</span></span>
-                <span class="operator-info"><span class="label">Matrícula:</span> <span id="vehicleDisplay">-</span></span>
-                <button class="change-identity-btn" id="changeIdentityBtn" 
-    onclick="window.showOperatorModal(true);" 
-    ontouchstart="window.showOperatorModal(true);">
-    🔄 Cambio operador
-</button>
-            </div>
+    <span class="operator-info"><span class="label">Operador:</span> <span id="operatorDisplay">-</span></span>
+    <span class="operator-info"><span class="label">Matrícula:</span> <span id="vehicleDisplay">-</span></span>
+    <!-- 用 div 替代 button，增强触摸兼容 -->
+    <div class="change-identity-btn" id="changeIdentityBtn" 
+         style="display:inline-block; padding:0 14px; background:#2563eb; color:white; border-radius:30px; cursor:pointer; line-height:30px; font-size:14px; font-weight:600; touch-action:manipulation;"
+         ontouchstart="window.showOperatorModal(true);" 
+         onclick="window.showOperatorModal(true);">
+        🔄 Cambio operador
+    </div>
+</div>
             <div class="status-row progress">
                 <span><span class="label">Modo local:</span> <span id="modeDisplay">Código principal</span></span>
                 <span><span class="label">Tarea actual:</span> <span id="taskKeysDisplay">No</span></span>
