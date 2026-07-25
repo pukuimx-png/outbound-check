@@ -1752,56 +1752,60 @@
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 Inicializando... (v5.0)');
-            loadLocalState();
-            console.log('📂 Estado local:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
+    console.log('🚀 Inicializando... (v5.0)');
+    loadLocalState();
+    console.log('📂 Estado local:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
-            var savedOperator = localStorage.getItem('operator');
-            var savedVehicle = localStorage.getItem('vehicle');
-            if (savedOperator && savedVehicle) {
-                operator = savedOperator;
-                vehicle = savedVehicle;
-                operatorDisplay.textContent = operator;
-                vehicleDisplay.textContent = vehicle;
-                isInitialized = true;
-                connectWebSocket();
-            } else {
-                operator = 'PDA';
-                vehicle = 'DEV';
-                localStorage.setItem('operator', operator);
-                localStorage.setItem('vehicle', vehicle);
-                operatorDisplay.textContent = operator;
-                vehicleDisplay.textContent = vehicle;
-                isInitialized = true;
-                connectWebSocket();
-                setTimeout(function() {
-                    window.showOperatorModal(false);
-                }, 800);
-            }
+    var savedOperator = localStorage.getItem('operator');
+    var savedVehicle = localStorage.getItem('vehicle');
+    if (savedOperator && savedVehicle) {
+        operator = savedOperator;
+        vehicle = savedVehicle;
+        operatorDisplay.textContent = operator;
+        vehicleDisplay.textContent = vehicle;
+        isInitialized = true;
+        connectWebSocket();
+    } else {
+        operator = 'PDA';
+        vehicle = 'DEV';
+        localStorage.setItem('operator', operator);
+        localStorage.setItem('vehicle', vehicle);
+        operatorDisplay.textContent = operator;
+        vehicleDisplay.textContent = vehicle;
+        isInitialized = true;
+        connectWebSocket();
+    }
 
-            bindEvents();
+    // ===== 强制弹出认证框（无需点击） =====
+    // 无论是否已保存身份，都弹出（用户可取消或确认）
+    setTimeout(function() {
+        window.showOperatorModal(false);
+    }, 1000);
+    // =====================================
 
-            fileInput.addEventListener('change', function(e) {
-                if (this.files.length) {
-                    window.handleFile(this.files[0]);
-                }
-                this.value = '';
-            });
-            uploadZone.addEventListener('click', function() { fileInput.click(); });
+    bindEvents();
 
-            document.getElementById('scanBtn').addEventListener('click', window.handleScan);
-            scanInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    window.handleScan();
-                }
-            });
-
-            updateUI();
-            updateStatusBar();
-            renderList();
-            setTimeout(function() { scanInput.focus(); }, 500);
+    fileInput.addEventListener('change', function(e) {
+        if (this.files.length) {
+            window.handleFile(this.files[0]);
         }
+        this.value = '';
+    });
+    uploadZone.addEventListener('click', function() { fileInput.click(); });
+
+    document.getElementById('scanBtn').addEventListener('click', window.handleScan);
+    scanInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            window.handleScan();
+        }
+    });
+
+    updateUI();
+    updateStatusBar();
+    renderList();
+    setTimeout(function() { scanInput.focus(); }, 500);
+}
 
         // ---- 启动 ----
         if (document.readyState === 'loading') {
