@@ -856,43 +856,56 @@
         };
 
         // ---- 结束主码 ----
-        window.switchToSubMode = function() {
-            if (pendingKeys.length === 0) {
-                showToast('No ha agregado ningún código', 'warning');
-                return;
-            }
-            if (localMode === 'sub') {
-                showToast('Ya está en modo subcódigo', 'warning');
-                return;
-            }
-            // 获取当前车辆（车牌）
-            var currentVehicle = (vehicle || '').trim();
-            var sameVehicleBatches = batches.filter(function(b) { return (b.vehicle || '').trim() === currentVehicle; });
-            var nextNumber = sameVehicleBatches.length + 1;
-            var batchName = 'Tarima' + nextNumber;
-            var newBatch = {
-                name: batchName,
-                keys: pendingKeys.slice(),
-                operator: operator || '',
-                vehicle: currentVehicle,
-                addresses: selectedAddresses.slice(),
-                createdAt: new Date().toISOString().slice(0, 10)
-            };
-            batches.push(newBatch);
-            saveLocalState();
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'add_batch', batch: newBatch }));
-            }
-            showToast('📦 Lote registrado: ' + batchName + ' (' + pendingKeys.length + ' códigos)', 'success', 3000);
-            taskKeys = pendingKeys.slice();
-            pendingKeys = [];
-            localMode = 'sub';
-            updateStatusBar();
-            renderList();
-            showToast('🔁 Cambiado a modo subcódigo, tarea: ' + taskKeys.join(', '), 'success', 2000);
-            scanInput.focus();
-            saveLocalState();
-        };
+window.switchToSubMode = function() {
+    if (pendingKeys.length === 0) {
+        showToast('No ha agregado ningún código', 'warning');
+        return;
+    }
+    if (localMode === 'sub') {
+        showToast('Ya está en modo subcódigo', 'warning');
+        return;
+    }
+
+    // ---- 修改开始：按操作员+车辆+地址组合独立编号 ----
+    var currentOperator = (operator || '').trim();
+    var currentVehicle = (vehicle || '').trim();
+    var currentAddrKey = selectedAddresses.slice().sort().join('|');
+
+    var sameGroupBatches = batches.filter(function(b) {
+        var bOperator = (b.operator || '').trim();
+        var bVehicle = (b.vehicle || '').trim();
+        var bAddrKey = (b.addresses || []).slice().sort().join('|');
+        return bOperator === currentOperator && bVehicle === currentVehicle && bAddrKey === currentAddrKey;
+    });
+    var nextNumber = sameGroupBatches.length + 1;
+    var batchName = 'Tarima' + nextNumber;
+    // ---- 修改结束 ----
+
+    var newBatch = {
+        name: batchName,
+        keys: pendingKeys.slice(),
+        operator: currentOperator,
+        vehicle: currentVehicle,
+        addresses: selectedAddresses.slice(), // 存储原始地址数组
+        createdAt: new Date().toISOString().slice(0, 10)
+    };
+    batches.push(newBatch);
+    saveLocalState();
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'add_batch', batch: newBatch }));
+    }
+
+    showToast('📦 Lote registrado: ' + batchName + ' (' + pendingKeys.length + ' códigos)', 'success', 3000);
+    taskKeys = pendingKeys.slice();
+    pendingKeys = [];
+    localMode = 'sub';
+    updateStatusBar();
+    renderList();
+    showToast('🔁 Cambiado a modo subcódigo, tarea: ' + taskKeys.join(', '), 'success', 2000);
+    scanInput.focus();
+    saveLocalState();
+};
 
         // ---- 强制结束 ----
         window.forceEnd = function() {
