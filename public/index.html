@@ -7,7 +7,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 完全保留第15版的样式（略，实际文件需包含） */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -114,7 +113,6 @@
         .force-connect-btn { background: #facc15; color: #1e293b; border: none; border-radius: 30px; padding: 10px 20px; font-size: 16px; font-weight: 700; width: 100%; margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .force-connect-btn:active { transform: scale(0.96); }
         .version-tag { font-size: 10px; color: #94a3b8; text-align: right; padding: 2px 4px; }
-        /* 日期选择器样式 */
         .export-date-selector { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
         .export-date-selector select { flex: 1; padding: 8px 12px; border-radius: 30px; border: 1px solid #cbd5e1; background: white; font-size: 14px; min-height: 40px; }
         .export-date-selector label { font-size: 14px; font-weight: 500; color: #1e293b; }
@@ -253,7 +251,7 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能，含日期筛选导出
+        // v5.0 - 完整功能：TXT 全部日期导出所有主码，Excel 按批次导出
         // ============================================================
         console.log('📦 Verificación de Salida v5.0 - 20260726');
 
@@ -405,7 +403,7 @@
         var confirmOperatorBtn = document.getElementById('confirmOperatorBtn');
         var cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
         var uploadZone = document.getElementById('uploadZone');
-        var exportDateSelect = document.getElementById('exportDateSelect');  // 新增
+        var exportDateSelect = document.getElementById('exportDateSelect');
 
         // ---- 调试面板折叠 ----
         var debugCollapsed = false;
@@ -617,7 +615,7 @@
                 document.getElementById('selectedAddressesDisplay').style.display = 'none';
             }
 
-            // ---- 按地址统计箱数 ----
+            // 按地址统计箱数
             var statsContainer = document.getElementById('addressStatsGlobal');
             if (statsContainer) {
                 var addrMap = {};
@@ -646,7 +644,7 @@
                 }
             }
 
-            // ---- 更新日期选择器 ----
+            // 更新日期选择器
             updateDateSelector();
 
             saveLocalState();
@@ -1487,35 +1485,47 @@
             reader.readAsArrayBuffer(file);
         };
 
-        // ---- 导出 TXT（含日期筛选） ----
+        // ---- 导出 TXT（修复：全部日期导出所有主码） ----
         window.exportTxt = function() {
             var selectedDate = exportDateSelect.value;
-            var filteredBatches = batches;
-            if (selectedDate !== 'all') {
-                filteredBatches = batches.filter(function(b) {
+            var groupsToExport = [];
+
+            if (selectedDate === 'all') {
+                // 全部日期：直接使用所有主码（忽略批次）
+                groupsToExport = state.groups.slice();
+            } else {
+                // 具体日期：只导出该日期批次中包含的主码
+                var filteredBatches = batches.filter(function(b) {
                     return (b.createdAt || '') === selectedDate;
                 });
-            }
-            var keysInFilteredBatches = new Set();
-            filteredBatches.forEach(function(b) {
-                b.keys.forEach(function(k) {
-                    keysInFilteredBatches.add(k);
+                var keysInFilteredBatches = new Set();
+                filteredBatches.forEach(function(b) {
+                    b.keys.forEach(function(k) {
+                        keysInFilteredBatches.add(k);
+                    });
                 });
-            });
+                groupsToExport = state.groups.filter(function(g) {
+                    return keysInFilteredBatches.has(g.key);
+                });
+            }
+
+            // 地址筛选（通用）
+            if (selectedAddresses.length > 0) {
+                groupsToExport = groupsToExport.filter(function(g) {
+                    return g.recipients && g.recipients.some(function(r) {
+                        return selectedAddresses.includes(r);
+                    });
+                });
+            }
 
             var lines = ['Lista de verificación', 'Generado: ' + new Date().toLocaleString()];
             if (selectedDate !== 'all') lines.push('Fecha filtrada: ' + selectedDate);
             if (selectedAddresses.length) lines.push('Destinatarios: ' + selectedAddresses.join(', '));
             lines.push('─'.repeat(50));
 
-            var groups = state.groups;
             var hasData = false;
-            for (var i = 0; i < groups.length; i++) {
-                var g = groups[i];
-                if (!keysInFilteredBatches.has(g.key)) continue;
-                if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) {
-                    continue;
-                }
+            for (var i = 0; i < groupsToExport.length; i++) {
+                var g = groupsToExport[i];
                 hasData = true;
                 lines.push('【' + (g.type === 'fba' ? 'FBA' : 'Custom') + ': ' + g.key + '】 ' + g.items.length + ' cajas');
                 for (var j = 0; j < g.items.length; j++) {
@@ -1544,7 +1554,7 @@
             showToast('📄 TXT exportado', 'success');
         };
 
-        // ---- 导出 Excel（含日期筛选） ----
+        // ---- 导出 Excel（保持原样：基于批次） ----
         window.exportExcel = function() {
             var selectedDate = exportDateSelect.value;
             var filteredBatches = batches;
