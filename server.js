@@ -12,7 +12,6 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
   .then(() => console.log('✅ MongoDB conectado'))
   .catch(err => console.error('❌ Error MongoDB:', err));
 
-// 定义状态 Schema（一个文档）
 const StateSchema = new mongoose.Schema({
   state: {
     groups: Array,
@@ -31,7 +30,6 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// 默认状态
 let state = {
   groups: [],
   selectedMainKeys: [],
@@ -46,7 +44,7 @@ let mainKeyOwners = {};
 const KEEP_DAYS = 30;
 
 function cleanOldData() {
-  if (state.batches.length === 0) return; // 无批次则跳过
+  if (state.batches.length === 0) return;
 
   const now = new Date();
   const cutoff = new Date(now);
@@ -88,14 +86,13 @@ async function loadStateFromDB() {
       console.log('📂 No hay documento en DB, usando estado inicial');
       await StateModel.create({ state, recipients });
     }
-    cleanOldData();
+    cleanOldData();   // 启动时清理旧数据
     saveStateToDB();
   } catch (err) {
     console.error('❌ Error al cargar estado:', err);
   }
 }
 
-// ----- 保存状态到数据库 -----
 async function saveStateToDB() {
   try {
     await StateModel.updateOne(
@@ -108,7 +105,6 @@ async function saveStateToDB() {
   }
 }
 
-// 业务函数
 function isMainCompleted(key) {
   const g = state.groups.find(gr => gr.key === key);
   if (!g) return false;
@@ -131,7 +127,7 @@ function broadcastRecipients() {
   saveStateToDB();
 }
 
-// 上传文件时保留 resetPending = true
+// ===== 关键修改：上传新文件时不调用 cleanOldData =====
 function initState(groupsData) {
   state.groups = groupsData;
   state.selectedMainKeys = [];
@@ -142,10 +138,11 @@ function initState(groupsData) {
       state.scanStatus[item.code] = false;
     }
   }
-  state.resetPending = true;  // 强制所有设备重新认证
-  cleanOldData();
+  state.resetPending = true;   // 强制所有设备重新认证
+  // 移除 cleanOldData();   // 上传新文件时不清理，避免误删新groups
   broadcast();
 }
+// =====================================================
 
 // ----- WebSocket 处理 -----
 wss.on('connection', (ws) => {
@@ -167,7 +164,6 @@ wss.on('connection', (ws) => {
           break;
         }
         case 'scan': {
-          // 扫描逻辑与第15版完全相同
           const { code, mode } = data;
           if (mode === 'main') {
             const group = state.groups.find(g => g.key === code);
@@ -256,7 +252,6 @@ wss.on('connection', (ws) => {
           ws.send(JSON.stringify({ type: 'success', message: `🔄 已释放主码: ${filteredKeys.join(', ')}` }));
           break;
         }
-        // ===== 修正重置所有 =====
         case 'reset_all': {
           state.groups = [];
           state.selectedMainKeys = [];
@@ -299,7 +294,7 @@ loadStateFromDB().then(() => {
     console.log(`服务器运行在 http://0.0.0.0:${PORT}`);
   });
 
-  // 每日自动清理（凌晨3点）
+  // 每日定时清理（凌晨3点）
   setInterval(() => {
     console.log('⏰ Ejecutando limpieza programada...');
     cleanOldData();
