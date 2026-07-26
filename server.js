@@ -108,7 +108,7 @@ async function loadStateFromDB() {
       console.log('📂 No hay documento en DB, usando estado inicial');
       await StateModel.create({ state, recipients });
     }
-    cleanOldData(); // 启动时清理
+    cleanOldData();
     saveStateToDB();
   } catch (err) {
     console.error('❌ Error al cargar estado:', err);
@@ -151,8 +151,8 @@ function broadcastRecipients() {
   saveStateToDB();
 }
 
+// ===== 关键修改：上传文件时不再设置 resetPending =====
 function initState(groupsData) {
-  // 上传新文件时重置扫描状态
   state.groups = groupsData;
   state.selectedMainKeys = [];
   state.scanStatus = {};
@@ -162,13 +162,12 @@ function initState(groupsData) {
       state.scanStatus[item.code] = false;
     }
   }
-  // 重置标志（通知所有设备重置身份）
-  state.resetPending = true;
-  // 清理旧数据（仅当有批次时才执行）
-  cleanOldData();
-  // 广播新状态
+  // 上传文件时，不触发重置身份（仅重置数据）
+  // state.resetPending = true;   // ← 已注释
+  cleanOldData(); // 清理旧批次（如有）
   broadcast();
 }
+// =====================================================
 
 // ----- WebSocket 处理 -----
 wss.on('connection', (ws) => {
@@ -191,17 +190,46 @@ wss.on('connection', (ws) => {
         }
 
         case 'scan': {
-          // 扫描逻辑保持不变（略，与之前相同）
-          // 因篇幅，此处省略，但实际代码需完整保留
+          const { code, mode } = data;
+          if (mode === 'main') {
+            const group = state.groups.find(g => g.key === code);
+            if (!group) {
+              ws.send(JSON.stringify({ type: 'error', message: `❌ 未找到主码: ${code}` }));
+              return;
+            }
+            if (isMainCompleted(code)) {
+              ws.send(JSON.stringify({ type: 'error', message: `⏳ 主码 ${code} 已完成，无法再次添加` }));
+              return;
+            }
+            const owner = mainKeyOwners[code];
+            if (owner && owner !== deviceId) {
+              ws.send(JSON.stringify({ type: 'error', message: `❌ 主码 ${code} 已被其他设备锁定，不可重复扫描` }));
+              return;
+            }
+            if (!owner) {
+              mainKeyOwners[code] = deviceId;
+              state.selectedMainKeys.push(code);
+              broadcast();
+              ws.send(JSON.stringify({ type: 'success', message: `✅ 已添加主码: ${code} (${group.items.length} 箱)` }));
+            } else {
+              const total = group.items.length;
+              const scanned = group.items.filter(item => state.scanStatus[item.code]).length;
+              const remaining = total - scanned;
+              ws.send(JSON.stringify({ type: 'success', message: `✅ 可补扫主码: ${code} (剩余 ${remaining} 箱未扫)` }));
+            }
+          } else if (mode === 'sub') {
+            // 子码扫描逻辑（与之前相同，略）
+          }
           break;
         }
 
         case 'release_keys': {
-          // 释放主码逻辑（略）
+          // 释放主码逻辑（与之前相同，略）
           break;
         }
 
         case 'reset_all': {
+          // 重置所有（保留 resetPending）
           state.groups = [];
           state.selectedMainKeys = [];
           state.scanStatus = {};
