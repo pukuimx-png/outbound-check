@@ -1432,62 +1432,64 @@
         };
 
         // ---- 上传文件 ----
-        window.handleFile = function(file) {
-            if (!file) return;
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var data = new Uint8Array(e.target.result);
-                    var workbook = XLSX.read(data, { type: 'array' });
-                    var sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+window.handleFile = function(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, { type: 'array' });
+            var sheet = workbook.Sheets[workbook.SheetNames[0]];
+            var rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-                    var parsed = parseExcelData(rows);
-                    if (!parsed) return;
-                    if (parsed.rows.length === 0) {
-                        showToast('No se encontraron datos válidos', 'error');
-                        return;
-                    }
+            var parsed = parseExcelData(rows);
+            if (!parsed) return;
+            if (parsed.rows.length === 0) {
+                showToast('No se encontraron datos válidos', 'error');
+                return;
+            }
 
-                    fileInfo.innerHTML = '✅ Archivo parseado: ' + file.name + ' (' + parsed.rows.length + ' filas, ' + parsed.recipients.length + ' destinatarios)';
-                    allRows = parsed.rows;
+            fileInfo.innerHTML = '✅ Archivo parseado: ' + file.name + ' (' + parsed.rows.length + ' filas, ' + parsed.recipients.length + ' destinatarios)';
+            allRows = parsed.rows;
 
-                    var completeGroups = buildGroupsFromRows(parsed.rows);
-                    allGroups = completeGroups;
-                    var recips = parsed.recipients || [];
-                    allRecipients = recips;
+            var completeGroups = buildGroupsFromRows(parsed.rows);
+            allGroups = completeGroups;
 
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId: deviceId }));
-                    } else {
-                        showToast('⏳ Esperando conexión para subir datos...', 'info');
-                    }
+            // 立即更新本地 state.groups 并刷新列表（无需等待服务器）
+            state.groups = completeGroups;
+            renderList();
+            updateStatusBar();
 
-                    if (recips.length > 0) {
-                        showToast('📍 Se identificaron ' + recips.length + ' direcciones de destinatario', 'success', 3000);
-                    } else {
-                        showToast('⚠️ No se encontró información de destinatario', 'warning', 3000);
-                    }
+            var recips = parsed.recipients || [];
+            allRecipients = recips;
 
-                    var readonly = false;
-                    if (selectedAddresses.length > 0) {
-                        var valid = selectedAddresses.every(function(a) { return recips.includes(a); });
-                        if (valid) readonly = true;
-                        else selectedAddresses = [];
-                    }
-                    renderAddressSelector(recips, parsed.rows, readonly);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'init', groups: completeGroups, recipients: recips, deviceId: deviceId }));
+            } else {
+                showToast('⏳ Esperando conexión para subir datos...', 'info');
+            }
 
-                    // 强制展开地址选择器并刷新UI
-                    addressCollapsed = false;
-                    updateStatusBar();
+            if (recips.length > 0) {
+                showToast('📍 Se identificaron ' + recips.length + ' direcciones de destinatario', 'success', 3000);
+            } else {
+                showToast('⚠️ No se encontró información de destinatario', 'warning', 3000);
+            }
 
-                } catch (err) {
-                    showToast('❌ Error al parsear: ' + err.message, 'error');
-                    console.error('Error parsing:', err);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        };
+            var readonly = false;
+            if (selectedAddresses.length > 0) {
+                var valid = selectedAddresses.every(function(a) { return recips.includes(a); });
+                if (valid) readonly = true;
+                else selectedAddresses = [];
+            }
+            renderAddressSelector(recips, parsed.rows, readonly);
+
+        } catch (err) {
+            showToast('❌ Error al parsear: ' + err.message, 'error');
+            console.error('Error parsing:', err);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+};
 
         // ---- 导出 TXT（按日期筛选） ----
         window.exportTxt = function() {
