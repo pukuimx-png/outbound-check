@@ -46,6 +46,13 @@ let mainKeyOwners = {};
 const KEEP_DAYS = 30;
 
 function cleanOldData() {
+  // ===== 方案 A：如果没有批次，直接返回，避免清空 groups =====
+  if (state.batches.length === 0) {
+    console.log('🧹 No hay lotes, saltar limpieza.');
+    return;
+  }
+  // ==========================================================
+
   const now = new Date();
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - KEEP_DAYS);
@@ -102,7 +109,7 @@ async function loadStateFromDB() {
       console.log('📂 No hay documento en DB, usando estado inicial');
       await StateModel.create({ state, recipients });
     }
-    // 启动时清理旧数据
+    // 启动时清理旧数据（如果有批次）
     cleanOldData();
     saveStateToDB();
   } catch (err) {
@@ -160,7 +167,7 @@ function initState(groupsData) {
   // 重置标志，通知所有设备重置身份
   state.resetPending = true;
   // 上传新数据前清理旧数据（保留最近30天）
-  cleanOldData();
+  cleanOldData();   // 此时如果 batches 为空，则直接返回，不会误删 groups
   broadcast();
 }
 
@@ -275,7 +282,7 @@ wss.on('connection', (ws) => {
           break;
         }
 
-        // ======== 修正 "重置所有" ========
+        // ======== 重置所有 ========
         case 'reset_all': {
           // 清空所有数据
           state.groups = [];
