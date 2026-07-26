@@ -7,7 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* ===== 样式 ===== */
+        /* 完全保留第15版的样式 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -109,15 +109,12 @@
         #debugPanel .error { color: #dc2626; }
         #debugPanel .success { color: #16a34a; }
         #debugPanel .info { color: #2563eb; }
+        /* 调试面板折叠 */
         #debugContent.collapsed { max-height: 0 !important; padding: 0; margin: 0; }
         #debugToggleIcon.rotated { transform: rotate(-90deg); }
         .force-connect-btn { background: #facc15; color: #1e293b; border: none; border-radius: 30px; padding: 10px 20px; font-size: 16px; font-weight: 700; width: 100%; margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .force-connect-btn:active { transform: scale(0.96); }
         .version-tag { font-size: 10px; color: #94a3b8; text-align: right; padding: 2px 4px; }
-        /* 日期选择器 */
-        .export-date-selector { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
-        .export-date-selector select { flex: 1; padding: 8px 12px; border-radius: 30px; border: 1px solid #cbd5e1; background: white; font-size: 14px; min-height: 40px; }
-        .export-date-selector label { font-size: 14px; font-weight: 500; color: #1e293b; }
     </style>
 </head>
 <body>
@@ -205,17 +202,6 @@
             <button class="btn btn-outline" id="resetBatchBtn">🔄 Restablecer mis códigos</button>
             <button class="btn btn-outline toggle-done-btn" id="toggleDoneBtn">Mostrar todo</button>
         </div>
-        <!-- 日期选择器 -->
-        <div class="export-date-selector">
-            <label for="exportDateSelect">📅 Fecha:</label>
-            <select id="exportDateSelect">
-                <option value="all">Todas las fechas</option>
-            </select>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:6px;">
-            <button class="btn btn-success" id="exportTxtBtn">📄 TXT</button>
-            <button class="btn btn-primary" id="exportExcelBtn">📊 Excel</button>
-        </div>
         <div class="reset-collapse-wrapper">
             <div class="reset-collapse-header" id="resetCollapseToggle">
                 <span>⚙️ Operaciones avanzadas</span>
@@ -228,7 +214,11 @@
         <div class="list-container" id="listContainer">
             <div id="listBody" style="max-height:45vh;overflow-y:auto;"></div>
         </div>
-        <div class="version-tag">v5.0 - 20260726</div>
+        <div style="margin-top:10px;display:flex;gap:6px;">
+            <button class="btn btn-success" id="exportTxtBtn">📄 TXT</button>
+            <button class="btn btn-primary" id="exportExcelBtn">📊 Excel</button>
+        </div>
+        <div class="version-tag">v5.0 - 20260725</div>
     </div>
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
@@ -253,9 +243,9 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能，含日期筛选导出，修复上传列表显示
+        // v5.0 - 基于第15版，修复上传列表显示和重置所有
         // ============================================================
-        console.log('📦 Verificación de Salida v5.0 - 20260726');
+        console.log('📦 Verificación de Salida v5.0 - 20260725');
 
         // ---- 语言文本 ----
         var LANG = {
@@ -405,7 +395,6 @@
         var confirmOperatorBtn = document.getElementById('confirmOperatorBtn');
         var cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
         var uploadZone = document.getElementById('uploadZone');
-        var exportDateSelect = document.getElementById('exportDateSelect');
 
         // ---- 调试面板折叠 ----
         var debugCollapsed = false;
@@ -541,28 +530,6 @@
             return filtered;
         }
 
-        // ---- 更新日期选择器 ----
-        function updateDateSelector() {
-            if (!exportDateSelect) return;
-            var currentVal = exportDateSelect.value;
-            var dates = new Set();
-            batches.forEach(function(b) {
-                if (b.createdAt) dates.add(b.createdAt);
-            });
-            var sortedDates = Array.from(dates).sort();
-            var html = '<option value="all">Todas las fechas</option>';
-            sortedDates.forEach(function(d) {
-                var selected = (d === currentVal) ? 'selected' : '';
-                html += '<option value="' + d + '" ' + selected + '>' + d + '</option>';
-            });
-            exportDateSelect.innerHTML = html;
-            if (currentVal !== 'all' && dates.has(currentVal)) {
-                exportDateSelect.value = currentVal;
-            } else {
-                exportDateSelect.value = 'all';
-            }
-        }
-
         // ---- 更新状态栏 ----
         function updateStatusBar() {
             modeDisplay.textContent = (localMode === 'main') ? 'Código principal' : 'Subcódigo';
@@ -617,7 +584,7 @@
                 document.getElementById('selectedAddressesDisplay').style.display = 'none';
             }
 
-            // 按地址统计箱数
+            // ---- 按地址统计箱数 ----
             var statsContainer = document.getElementById('addressStatsGlobal');
             if (statsContainer) {
                 var addrMap = {};
@@ -645,9 +612,6 @@
                     statsContainer.innerHTML = html;
                 }
             }
-
-            // 更新日期选择器
-            updateDateSelector();
 
             saveLocalState();
 
@@ -771,7 +735,6 @@
                             if (state.batches) {
                                 batches = state.batches;
                             }
-                            // 检测重置标志
                             if (state.resetPending === true && !resetHandledThisSession) {
                                 resetHandledThisSession = true;
                                 localStorage.removeItem('operator');
@@ -786,7 +749,9 @@
                                 vehicleDisplay.textContent = '-';
                                 renderAddressSelector([], [], false);
                                 showToast('🔐 数据已重置，请重新认证', 'warning', 3000);
-                                setTimeout(function() { window.showOperatorModal(false); }, 500);
+                                setTimeout(function() {
+                                    window.showOperatorModal(false);
+                                }, 500);
                                 if (ws && ws.readyState === WebSocket.OPEN) {
                                     ws.send(JSON.stringify({ type: 'reset_confirmed', deviceId: deviceId }));
                                 }
@@ -966,6 +931,7 @@
                 return;
             }
 
+            // ---- 按操作员+车辆+地址独立编号 ----
             var currentOperator = (operator || '').trim();
             var currentVehicle = (vehicle || '').trim();
             var currentAddrKey = selectedAddresses.slice().sort().join('|');
@@ -1323,7 +1289,7 @@
             return { rows: parsedRows, recipients: Array.from(recipientSet) };
         }
 
-        // ---- 地址选择器 ----
+        // ---- 地址选择器（含自动展开） ----
         function renderAddressSelector(recipients, rows, readonly) {
             if (!recipients || recipients.length === 0) {
                 addressGrid.innerHTML = '<div class="address-empty-tip">📭 Sin direcciones de entrega, haga clic para mostrar todos los datos</div>';
@@ -1426,7 +1392,9 @@
             // 由 inlineConfirmAddress.onclick 处理
         };
 
-        // ---- 上传文件（关键修复） ----
+        // ============================================================
+        // 关键修复：上传文件时立即更新 state.groups 并刷新列表
+        // ============================================================
         window.handleFile = function(file) {
             if (!file) return;
             var reader = new FileReader();
@@ -1452,7 +1420,8 @@
 
                     // ==== 立即更新 state.groups 并刷新列表 ====
                     state.groups = completeGroups;
-                    // ========================================
+                    renderList();
+                    // =============================================
 
                     var recips = parsed.recipients || [];
                     allRecipients = recips;
@@ -1477,10 +1446,9 @@
                     }
                     renderAddressSelector(recips, parsed.rows, readonly);
 
-                    // ==== 强制刷新列表 ====
-                    renderList();
+                    // 强制展开地址并刷新状态
+                    addressCollapsed = false;
                     updateStatusBar();
-                    // ====================
 
                 } catch (err) {
                     showToast('❌ Error al parsear: ' + err.message, 'error');
@@ -1490,26 +1458,9 @@
             reader.readAsArrayBuffer(file);
         };
 
-        // ---- 导出 TXT（按日期筛选） ----
+        // ---- 导出 TXT（保持原样） ----
         window.exportTxt = function() {
-            var selectedDate = exportDateSelect.value;
-            var filteredBatches = batches;
-            if (selectedDate !== 'all') {
-                filteredBatches = batches.filter(function(b) {
-                    return (b.createdAt || '') === selectedDate;
-                });
-            }
-            var keysInFilteredBatches = new Set();
-            filteredBatches.forEach(function(b) {
-                b.keys.forEach(function(k) {
-                    keysInFilteredBatches.add(k);
-                });
-            });
-
             var lines = ['Lista de verificación', 'Generado: ' + new Date().toLocaleString()];
-            if (selectedDate !== 'all') {
-                lines.push('Fecha filtrada: ' + selectedDate);
-            }
             if (selectedAddresses.length) lines.push('Destinatarios: ' + selectedAddresses.join(', '));
             lines.push('─'.repeat(50));
 
@@ -1517,7 +1468,6 @@
             var hasData = false;
             for (var i = 0; i < groups.length; i++) {
                 var g = groups[i];
-                if (!keysInFilteredBatches.has(g.key)) continue;
                 if (selectedAddresses.length > 0 && g.recipients && !g.recipients.some(function(r) { return selectedAddresses.includes(r); })) {
                     continue;
                 }
@@ -1540,141 +1490,167 @@
             var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            var fileName = 'Verificacion';
-            if (selectedDate !== 'all') fileName += '_' + selectedDate;
-            else fileName += '_' + new Date().toISOString().slice(0, 10);
-            a.download = fileName + '.txt';
+            a.download = 'Verificacion_' + new Date().toISOString().slice(0, 10) + '.txt';
             a.click();
             URL.revokeObjectURL(a.href);
             showToast('📄 TXT exportado', 'success');
         };
 
-        // ---- 导出 Excel（按日期筛选） ----
+        // ---- 导出 Excel（保持原样） ----
         window.exportExcel = function() {
-            var selectedDate = exportDateSelect.value;
-            var filteredBatches = batches;
-            if (selectedDate !== 'all') {
-                filteredBatches = batches.filter(function(b) {
-                    return (b.createdAt || '') === selectedDate;
-                });
-            }
-            if (filteredBatches.length === 0) {
-                showToast('⚠️ 没有数据可导出', 'warning');
-                return;
-            }
-
-            var keysInFilteredBatches = new Set();
-            filteredBatches.forEach(function(b) {
-                b.keys.forEach(function(k) {
-                    keysInFilteredBatches.add(k);
-                });
-            });
-
             var wb = XLSX.utils.book_new();
-            var groups = {};
-            for (var i = 0; i < filteredBatches.length; i++) {
-                var b = filteredBatches[i];
-                var op = b.operator || '';
-                var veh = b.vehicle || '';
-                var addrList = b.addresses || [];
-                var batchAddresses = addrList.filter(function(addr) {
-                    return selectedAddresses.length === 0 || selectedAddresses.includes(addr);
-                });
-                if (batchAddresses.length === 0) continue;
-                var addrKey = batchAddresses.length ? batchAddresses.join(',') : '';
-                var dateKey = b.createdAt || '';
-                var groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
-                if (!groups[groupKey]) {
-                    groups[groupKey] = {
-                        operator: op,
-                        vehicle: veh,
-                        addresses: batchAddresses,
-                        date: dateKey,
-                        batches: []
-                    };
-                }
-                groups[groupKey].batches.push(b);
-            }
+            var filteredKeys = getFilteredMainKeys();
 
-            if (Object.keys(groups).length === 0) {
-                showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
-                return;
-            }
-
-            var sheetIndex = 1;
-            for (var gKey in groups) {
-                var group = groups[gKey];
+            if (batches.length === 0) {
                 var rows = [];
                 var now = new Date();
-                var dateStrDisplay = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
+                var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                var addr = selectedAddresses.length > 0 ? selectedAddresses.join(', ') : '';
 
-                rows.push(['扫描员Escaneador:', group.operator]);
-                rows.push(['车牌Placa:', group.vehicle]);
-                rows.push(['导出日期Fecha:', dateStrDisplay]);
-                rows.push(['地址Direccion de entrega:', addrDisplay]);
+                rows.push(['扫描员Escaneador:', operator || '']);
+                rows.push(['车牌Placa:', vehicle || '']);
+                rows.push(['导出日期Fecha:', dateStr]);
+                rows.push(['地址Direccion de entrega:', addr]);
                 rows.push([]);
 
                 var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
                 rows.push(headers);
 
                 var idx = 0;
-                for (var bi = 0; bi < group.batches.length; bi++) {
-                    var batch = group.batches[bi];
-                    var tarimaName = batch.name || 'Tarima' + (bi + 1);
-                    var batchKeys = batch.keys.filter(function(key) {
-                        return keysInFilteredBatches.has(key) && (selectedAddresses.length === 0 || getFilteredMainKeys().includes(key));
-                    });
-                    if (batchKeys.length === 0) continue;
+                for (var i = 0; i < filteredKeys.length; i++) {
+                    var key = filteredKeys[i];
+                    var g = state.groups.find(function(gr) { return gr.key === key; });
+                    if (!g) continue;
+                    var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
+                    var totalBoxes = g.items.length;
+                    var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
+                    var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
 
-                    for (var ki = 0; ki < batchKeys.length; ki++) {
-                        var key = batchKeys[ki];
-                        var g = state.groups.find(function(gr) { return gr.key === key; });
-                        if (!g) continue;
-                        var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
-                        var totalBoxes = g.items.length;
-                        var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
-                        var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
-
-                        idx++;
-                        rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
-
-                        for (var ji = 0; ji < g.items.length; ji++) {
-                            var item = g.items[ji];
-                            var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
-                            var scanned = state.scanStatus[item.code] || false;
-                            rows.push(['', '', '', ji + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, tarimaName]);
-                        }
+                    idx++;
+                    rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
+                    for (var j = 0; j < g.items.length; j++) {
+                        var item = g.items[j];
+                        var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+                        var scanned = state.scanStatus[item.code] || false;
+                        rows.push(['', '', '', j + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, '']);
                     }
                 }
 
-                if (rows.length <= 5) continue;
-
-                var cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
-                var sheetName = sheetIndex + '_' + cleanVehicle + '_' + (group.date || 'nodate');
-                if (sheetName.length > 31) {
-                    sheetName = sheetName.substring(0, 31);
+                if (rows.length <= 5) {
+                    showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
+                    return;
                 }
 
                 var ws = XLSX.utils.aoa_to_sheet(rows);
                 ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
+                var sheetName = vehicle ? 'Placas ' + vehicle : 'Verificacion';
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
-                sheetIndex++;
-            }
+            } else {
+                var groups = {};
 
-            if (wb.SheetNames.length === 0) {
-                showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
-                return;
+                for (var i = 0; i < batches.length; i++) {
+                    var b = batches[i];
+                    var op = b.operator || '';
+                    var veh = b.vehicle || '';
+                    var addrList = b.addresses || [];
+                    var batchAddresses = addrList.filter(function(addr) {
+                        return selectedAddresses.length === 0 || selectedAddresses.includes(addr);
+                    });
+                    if (batchAddresses.length === 0) continue;
+
+                    var addrKey = batchAddresses.length ? batchAddresses.join(',') : '';
+                    var dateKey = b.createdAt || new Date().toISOString().slice(0, 10);
+                    var groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
+                    if (!groups[groupKey]) {
+                        groups[groupKey] = {
+                            operator: op,
+                            vehicle: veh,
+                            addresses: batchAddresses,
+                            date: dateKey,
+                            batches: []
+                        };
+                    }
+                    groups[groupKey].batches.push(b);
+                }
+
+                if (Object.keys(groups).length === 0) {
+                    showToast('⚠️ 当前筛选条件下没有可导出的批次', 'warning');
+                    return;
+                }
+
+                var sheetIndex = 1;
+                for (var gKey in groups) {
+                    var group = groups[gKey];
+                    var rows = [];
+                    var now = new Date();
+                    var dateStr = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
+
+                    rows.push(['扫描员Escaneador:', group.operator]);
+                    rows.push(['车牌Placa:', group.vehicle]);
+                    rows.push(['导出日期Fecha:', dateStr]);
+                    rows.push(['地址Direccion de entrega:', addrDisplay]);
+                    rows.push([]);
+
+                    var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima'];
+                    rows.push(headers);
+
+                    var idx = 0;
+                    for (var bi = 0; bi < group.batches.length; bi++) {
+                        var batch = group.batches[bi];
+                        var tarimaName = batch.name || 'Tarima' + (bi + 1);
+                        var batchKeys = batch.keys.filter(function(key) {
+                            return filteredKeys.includes(key);
+                        });
+                        if (batchKeys.length === 0) continue;
+
+                        for (var ki = 0; ki < batchKeys.length; ki++) {
+                            var key = batchKeys[ki];
+                            var g = state.groups.find(function(gr) { return gr.key === key; });
+                            if (!g) continue;
+                            var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
+                            var totalBoxes = g.items.length;
+                            var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
+                            var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
+
+                            idx++;
+                            rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
+
+                            for (var ji = 0; ji < g.items.length; ji++) {
+                                var item = g.items[ji];
+                                var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
+                                var scanned = state.scanStatus[item.code] || false;
+                                rows.push(['', '', '', ji + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, tarimaName]);
+                            }
+                        }
+                    }
+
+                    if (rows.length <= 5) continue;
+
+                    var cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
+                    var cleanDate = group.date.replace(/[\\:*?/\[\]]/g, '');
+                    var sheetName = sheetIndex + '_' + cleanVehicle + '_' + cleanDate;
+                    if (sheetName.length > 31) {
+                        sheetName = sheetName.substring(0, 31);
+                    }
+
+                    var ws = XLSX.utils.aoa_to_sheet(rows);
+                    ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }];
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    sheetIndex++;
+                }
+
+                if (wb.SheetNames.length === 0) {
+                    showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
+                    return;
+                }
             }
 
             var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             var blob = new Blob([out], { type: 'application/octet-stream' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            var fileName = 'Verificacion';
-            if (selectedDate !== 'all') fileName += '_' + selectedDate;
-            else fileName += '_' + new Date().toISOString().slice(0, 10);
-            a.download = fileName + '.xlsx';
+            a.download = 'Verificacion_' + new Date().toISOString().slice(0, 10) + '.xlsx';
             a.click();
             URL.revokeObjectURL(a.href);
             showToast('📊 Excel exportado', 'success');

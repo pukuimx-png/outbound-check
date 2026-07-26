@@ -12,7 +12,7 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
   .then(() => console.log('✅ MongoDB conectado'))
   .catch(err => console.error('❌ Error MongoDB:', err));
 
-// ----- 定义状态 Schema -----
+// 定义状态 Schema（一个文档）
 const StateSchema = new mongoose.Schema({
   state: {
     groups: Array,
@@ -42,59 +42,39 @@ let state = {
 let recipients = [];
 let mainKeyOwners = {};
 
-// ========== 自动清理：保留最近30天 ==========
+// ========== 自动清理（保留最近30天） ==========
 const KEEP_DAYS = 30;
 
 function cleanOldData() {
-  // 如果没有批次，直接返回，避免误删 groups
-  if (state.batches.length === 0) {
-    console.log('🧹 No hay lotes, saltar limpieza.');
-    return;
-  }
+  if (state.batches.length === 0) return; // 无批次则跳过
 
   const now = new Date();
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - KEEP_DAYS);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
-  // 过滤掉过期的批次
-  const remainingBatches = state.batches.filter(b => {
-    const batchDate = b.createdAt || '';
-    return batchDate >= cutoffStr;
-  });
-
-  // 收集所有剩余批次中出现的主码
+  const remainingBatches = state.batches.filter(b => (b.createdAt || '') >= cutoffStr);
   const activeKeys = new Set();
   remainingBatches.forEach(b => b.keys.forEach(k => activeKeys.add(k)));
 
-  // 保留哪些主码组（至少在一个未过期批次中出现）
   const updatedGroups = state.groups.filter(g => activeKeys.has(g.key));
-
-  // 更新 scanStatus，仅保留这些主码下的箱码
   const validCodes = new Set();
   updatedGroups.forEach(g => g.items.forEach(item => validCodes.add(item.code)));
   const newScanStatus = {};
   for (const code in state.scanStatus) {
-    if (validCodes.has(code)) {
-      newScanStatus[code] = state.scanStatus[code];
-    }
+    if (validCodes.has(code)) newScanStatus[code] = state.scanStatus[code];
   }
 
-  // 更新状态
   state.batches = remainingBatches;
   state.groups = updatedGroups;
   state.scanStatus = newScanStatus;
   state.selectedMainKeys = state.selectedMainKeys.filter(k => activeKeys.has(k));
-
-  // 清理 mainKeyOwners
   for (const key in mainKeyOwners) {
     if (!activeKeys.has(key)) delete mainKeyOwners[key];
   }
-
-  console.log(`🧹 Limpieza completada: se conservan ${remainingBatches.length} lotes y ${updatedGroups.length} códigos principales.`);
+  console.log(`🧹 Limpieza completada: ${remainingBatches.length} lotes, ${updatedGroups.length} códigos.`);
 }
-
-// ============================================
+// =============================================
 
 // ----- 从数据库加载状态 -----
 async function loadStateFromDB() {
@@ -128,7 +108,7 @@ async function saveStateToDB() {
   }
 }
 
-// ----- 业务函数 -----
+// 业务函数
 function isMainCompleted(key) {
   const g = state.groups.find(gr => gr.key === key);
   if (!g) return false;
@@ -151,7 +131,7 @@ function broadcastRecipients() {
   saveStateToDB();
 }
 
-// ===== 关键修改：上传文件时不再设置 resetPending =====
+// 上传文件时保留 resetPending = true
 function initState(groupsData) {
   state.groups = groupsData;
   state.selectedMainKeys = [];
@@ -162,12 +142,10 @@ function initState(groupsData) {
       state.scanStatus[item.code] = false;
     }
   }
-  // 上传文件时，不触发重置身份（仅重置数据）
-  // state.resetPending = true;   // ← 已注释
-  cleanOldData(); // 清理旧批次（如有）
+  state.resetPending = true;  // 强制所有设备重新认证
+  cleanOldData();
   broadcast();
 }
-// =====================================================
 
 // ----- WebSocket 处理 -----
 wss.on('connection', (ws) => {
@@ -188,8 +166,8 @@ wss.on('connection', (ws) => {
           initState(data.groups);
           break;
         }
-
         case 'scan': {
+          // 扫描逻辑与第15版完全相同
           const { code, mode } = data;
           if (mode === 'main') {
             const group = state.groups.find(g => g.key === code);
@@ -218,18 +196,68 @@ wss.on('connection', (ws) => {
               ws.send(JSON.stringify({ type: 'success', message: `✅ 可补扫主码: ${code} (剩余 ${remaining} 箱未扫)` }));
             }
           } else if (mode === 'sub') {
-            // 子码扫描逻辑（与之前相同，略）
+            let found = false;
+            let matchedItem = null;
+            for (const key of state.selectedMainKeys) {
+              const g = state.groups.find(gr => gr.key === key);
+              if (g) {
+                const item = g.items.find(i => i.code === code);
+                if (item) {
+                  found = true;
+                  matchedItem = item;
+                  break;
+                }
+                const parts = code.split('/');
+                if (parts.length === 2 && parts[0] === key) {
+                  const idx = parseInt(parts[1]);
+                  if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) {
+                    const realItem = g.items[idx - 1];
+                    found = true;
+                    matchedItem = realItem;
+                    break;
+                  }
+                }
+              }
+            }
+            if (!found) {
+              ws.send(JSON.stringify({ type: 'error', message: `❌ 无效子码: ${code} (不在全局主码列表中)` }));
+              return;
+            }
+            if (state.scanStatus[matchedItem.code]) {
+              ws.send(JSON.stringify({ type: 'error', message: `⏳ 子码 ${code} 已扫描过` }));
+              return;
+            }
+            state.scanStatus[matchedItem.code] = true;
+            broadcast();
+            const scannedCount = Object.values(state.scanStatus).filter(v => v).length;
+            const total = state.selectedMainKeys.reduce((sum, k) => {
+              const g = state.groups.find(gr => gr.key === k);
+              return sum + (g ? g.items.length : 0);
+            }, 0);
+            ws.send(JSON.stringify({ type: 'success', message: `✅ 已扫描: ${code} (${scannedCount}/${total})` }));
           }
           break;
         }
-
         case 'release_keys': {
-          // 释放主码逻辑（与之前相同，略）
+          const keysToRelease = data.keys || [];
+          if (keysToRelease.length === 0) break;
+          const filteredKeys = keysToRelease.filter(k => mainKeyOwners[k] === deviceId);
+          state.selectedMainKeys = state.selectedMainKeys.filter(k => !filteredKeys.includes(k));
+          for (const key of filteredKeys) {
+            delete mainKeyOwners[key];
+            const g = state.groups.find(gr => gr.key === key);
+            if (g) {
+              for (const item of g.items) {
+                state.scanStatus[item.code] = false;
+              }
+            }
+          }
+          broadcast();
+          ws.send(JSON.stringify({ type: 'success', message: `🔄 已释放主码: ${filteredKeys.join(', ')}` }));
           break;
         }
-
+        // ===== 修正重置所有 =====
         case 'reset_all': {
-          // 重置所有（保留 resetPending）
           state.groups = [];
           state.selectedMainKeys = [];
           state.scanStatus = {};
@@ -240,13 +268,11 @@ wss.on('connection', (ws) => {
           ws.send(JSON.stringify({ type: 'success', message: '🔁 已重置所有数据，所有设备将重新认证' }));
           break;
         }
-
         case 'reset_confirmed': {
           state.resetPending = false;
           broadcast();
           break;
         }
-
         case 'add_batch': {
           const { batch } = data;
           if (batch) {
@@ -255,7 +281,6 @@ wss.on('connection', (ws) => {
           }
           break;
         }
-
         default:
           break;
       }
@@ -274,7 +299,7 @@ loadStateFromDB().then(() => {
     console.log(`服务器运行在 http://0.0.0.0:${PORT}`);
   });
 
-  // 每日定时清理（凌晨3点）
+  // 每日自动清理（凌晨3点）
   setInterval(() => {
     console.log('⏰ Ejecutando limpieza programada...');
     cleanOldData();
