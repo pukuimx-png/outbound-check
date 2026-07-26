@@ -12,6 +12,7 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
   .then(() => console.log('✅ MongoDB conectado'))
   .catch(err => console.error('❌ Error MongoDB:', err));
 
+// ----- 定义状态 Schema（一个文档） -----
 const StateSchema = new mongoose.Schema({
   state: {
     groups: Array,
@@ -30,6 +31,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+// 默认状态（首次启动使用）
 let state = {
   groups: [],
   selectedMainKeys: [],
@@ -40,39 +42,41 @@ let state = {
 let recipients = [];
 let mainKeyOwners = {};
 
-// ========== 自动清理（保留最近30天） ==========
+// ========== 自动清理：保留最近30天（仅清理批次，不删除主码组） ==========
 const KEEP_DAYS = 30;
 
 function cleanOldData() {
-  if (state.batches.length === 0) return;
+  // 如果没有批次，直接返回
+  if (state.batches.length === 0) {
+    console.log('🧹 No hay lotes, saltar limpieza.');
+    return;
+  }
 
   const now = new Date();
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - KEEP_DAYS);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
 
+  // 只过滤掉过期的批次
   const remainingBatches = state.batches.filter(b => (b.createdAt || '') >= cutoffStr);
-  const activeKeys = new Set();
-  remainingBatches.forEach(b => b.keys.forEach(k => activeKeys.add(k)));
 
-  const updatedGroups = state.groups.filter(g => activeKeys.has(g.key));
-  const validCodes = new Set();
-  updatedGroups.forEach(g => g.items.forEach(item => validCodes.add(item.code)));
-  const newScanStatus = {};
-  for (const code in state.scanStatus) {
-    if (validCodes.has(code)) newScanStatus[code] = state.scanStatus[code];
-  }
-
+  // 更新批次列表
   state.batches = remainingBatches;
-  state.groups = updatedGroups;
-  state.scanStatus = newScanStatus;
-  state.selectedMainKeys = state.selectedMainKeys.filter(k => activeKeys.has(k));
+
+  // ===== 关键改动：不再修改 state.groups 和 state.scanStatus =====
+  // 所有主码组（无论是否有批次）都永久保留，永不删除
+
+  // 清理 mainKeyOwners 中已不存在的主码（但主码组仍在，所以其实可以保留，但为了整洁我们清理无效项）
+  const validKeys = new Set(state.groups.map(g => g.key));
   for (const key in mainKeyOwners) {
-    if (!activeKeys.has(key)) delete mainKeyOwners[key];
+    if (!validKeys.has(key)) {
+      delete mainKeyOwners[key];
+    }
   }
-  console.log(`🧹 Limpieza completada: ${remainingBatches.length} lotes, ${updatedGroups.length} códigos.`);
+
+  console.log(`🧹 Limpieza completada: se conservan ${remainingBatches.length} lotes.`);
 }
-// =============================================
+// ============================================================
 
 // ----- 从数据库加载状态 -----
 async function loadStateFromDB() {
@@ -86,13 +90,15 @@ async function loadStateFromDB() {
       console.log('📂 No hay documento en DB, usando estado inicial');
       await StateModel.create({ state, recipients });
     }
-    cleanOldData();   // 启动时清理旧数据
+    // 启动时清理旧批次（不会删除主码组）
+    cleanOldData();
     saveStateToDB();
   } catch (err) {
     console.error('❌ Error al cargar estado:', err);
   }
 }
 
+// ----- 保存状态到数据库 -----
 async function saveStateToDB() {
   try {
     await StateModel.updateOne(
@@ -105,6 +111,7 @@ async function saveStateToDB() {
   }
 }
 
+// ----- 业务函数 -----
 function isMainCompleted(key) {
   const g = state.groups.find(gr => gr.key === key);
   if (!g) return false;
@@ -127,7 +134,7 @@ function broadcastRecipients() {
   saveStateToDB();
 }
 
-// ===== 关键修改：上传新文件时不调用 cleanOldData =====
+// 上传新文件时，重置扫描状态并强制重新认证（保留 resetPending）
 function initState(groupsData) {
   state.groups = groupsData;
   state.selectedMainKeys = [];
@@ -139,10 +146,9 @@ function initState(groupsData) {
     }
   }
   state.resetPending = true;   // 强制所有设备重新认证
-  // 移除 cleanOldData();   // 上传新文件时不清理，避免误删新groups
+  // 上传新文件时不调用 cleanOldData，避免误删新数据
   broadcast();
 }
-// =====================================================
 
 // ----- WebSocket 处理 -----
 wss.on('connection', (ws) => {
@@ -163,6 +169,7 @@ wss.on('connection', (ws) => {
           initState(data.groups);
           break;
         }
+
         case 'scan': {
           const { code, mode } = data;
           if (mode === 'main') {
@@ -234,6 +241,7 @@ wss.on('connection', (ws) => {
           }
           break;
         }
+
         case 'release_keys': {
           const keysToRelease = data.keys || [];
           if (keysToRelease.length === 0) break;
@@ -252,6 +260,8 @@ wss.on('connection', (ws) => {
           ws.send(JSON.stringify({ type: 'success', message: `🔄 已释放主码: ${filteredKeys.join(', ')}` }));
           break;
         }
+
+        // 重置所有：彻底清空所有数据
         case 'reset_all': {
           state.groups = [];
           state.selectedMainKeys = [];
@@ -263,11 +273,13 @@ wss.on('connection', (ws) => {
           ws.send(JSON.stringify({ type: 'success', message: '🔁 已重置所有数据，所有设备将重新认证' }));
           break;
         }
+
         case 'reset_confirmed': {
           state.resetPending = false;
           broadcast();
           break;
         }
+
         case 'add_batch': {
           const { batch } = data;
           if (batch) {
@@ -276,6 +288,7 @@ wss.on('connection', (ws) => {
           }
           break;
         }
+
         default:
           break;
       }
@@ -294,11 +307,11 @@ loadStateFromDB().then(() => {
     console.log(`服务器运行在 http://0.0.0.0:${PORT}`);
   });
 
-  // 每日定时清理（凌晨3点）
+  // 每日定时清理（凌晨3点），只清理过期批次，不删除主码组
   setInterval(() => {
     console.log('⏰ Ejecutando limpieza programada...');
     cleanOldData();
     saveStateToDB();
-    broadcast();
+    broadcast(); // 通知所有客户端更新
   }, 24 * 60 * 60 * 1000);
 });
