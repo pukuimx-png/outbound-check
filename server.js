@@ -276,14 +276,18 @@ wss.on('connection', (ws) => {
           break;
         }
 
-        case 'add_batch': {
-          const { batch } = data;
-          if (batch) {
-            state.batches.push(batch);
-            broadcast();
-          }
-          break;
-        }
+case 'add_batch': {
+    const { batch } = data;
+    if (batch) {
+        // 使用服务器当前墨西哥城日期覆盖客户端日期
+        const now = new Date();
+        const createdAt = now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+        batch.createdAt = createdAt;
+        state.batches.push(batch);
+        broadcast();
+    }
+    break;
+}
 
         default:
           break;
