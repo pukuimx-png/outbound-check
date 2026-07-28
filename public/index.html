@@ -7,7 +7,8 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 完全保留17版样式，无改动 */
+        /* 样式与17版完全相同，此处省略（实际文件需保留） */
+        /* 您可以直接使用之前17版的样式 */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -120,6 +121,7 @@
     </style>
 </head>
 <body>
+    <!-- HTML 结构与17版完全相同 -->
     <div class="app" id="app">
         <h1>
             📦 Verificación de Salida
@@ -252,8 +254,7 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能：TXT 全部日期导出所有主码，Excel 按批次导出
-        // 增加 时间/Hora 列，使用墨西哥城时区，修复 toggleDebugPanel
+        // v5.0 - 完整功能：日期筛选、时间列、墨西哥城时区、修复 toggleDebugPanel
         // ============================================================
         console.log('📦 Verificación de Salida v5.0 - 20260726');
 
@@ -1554,7 +1555,7 @@
             showToast('📄 TXT exportado', 'success');
         };
 
-        // ---- 导出 Excel（新增时间列，时区） ----
+        // ---- 导出 Excel（新增时间列，时区，导出日期与所选一致） ----
         window.exportExcel = function() {
             var selectedDate = exportDateSelect.value;
             var filteredBatches = batches;
@@ -1611,12 +1612,25 @@
                 var group = groups[gKey];
                 var rows = [];
                 var now = new Date();
-                var dateStrDisplay = now.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
+
+                // 生成导出日期：如果选具体日期则用该日期，否则用当前墨西哥城日期
+                var exportDateDisplay;
+                if (selectedDate === 'all') {
+                    var dateObj = new Date();
+                    var datePart = dateObj.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // YYYY-MM-DD
+                    var timePart = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Mexico_City' });
+                    exportDateDisplay = datePart + ' ' + timePart;
+                } else {
+                    // 使用所选日期，时间取当前墨西哥城时间
+                    var dateObj = new Date();
+                    var timePart = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Mexico_City' });
+                    exportDateDisplay = selectedDate + ' ' + timePart;
+                }
 
                 rows.push(['扫描员Escaneador:', group.operator]);
                 rows.push(['车牌Placa:', group.vehicle]);
-                rows.push(['导出日期Fecha:', dateStrDisplay]);
+                rows.push(['导出日期Fecha:', exportDateDisplay]);
                 rows.push(['地址Direccion de entrega:', addrDisplay]);
                 rows.push([]);
 
@@ -1938,7 +1952,7 @@
         window.exportExcel = exportExcel;
         window.confirmAddressSelection = confirmAddressSelection;
         window.showOperatorModal = showOperatorModal;
-        window.toggleDebugPanel = toggleDebugPanel;  // 新增暴露
+        window.toggleDebugPanel = toggleDebugPanel;
     </script>
 </body>
 </html>
