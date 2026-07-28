@@ -17,7 +17,7 @@ const StateSchema = new mongoose.Schema({
   state: {
     groups: Array,
     selectedMainKeys: [String],
-    scanStatus: Object,  // 改为存储时间字符串
+    scanStatus: Object,  // 存储布尔值或时间字符串
     resetPending: Boolean,
     batches: Array
   },
@@ -31,7 +31,7 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// 默认状态
+// 默认状态（首次启动使用）
 let state = {
   groups: [],
   selectedMainKeys: [],
@@ -59,7 +59,13 @@ function cleanOldData() {
   const remainingBatches = state.batches.filter(b => (b.createdAt || '') >= cutoffStr);
   state.batches = remainingBatches;
 
-  // 不修改 groups 和 scanStatus
+  const validKeys = new Set(state.groups.map(g => g.key));
+  for (const key in mainKeyOwners) {
+    if (!validKeys.has(key)) {
+      delete mainKeyOwners[key];
+    }
+  }
+
   console.log(`🧹 Limpieza completada: se conservan ${remainingBatches.length} lotes.`);
 }
 // ============================================================
@@ -100,8 +106,7 @@ async function saveStateToDB() {
 function isMainCompleted(key) {
   const g = state.groups.find(gr => gr.key === key);
   if (!g) return false;
-  // scanStatus 现在可能是时间字符串，判断 truthy
-  return g.items.every(item => state.scanStatus[item.code]);
+  return g.items.every(item => state.scanStatus[item.code] || false);
 }
 
 function broadcast() {
@@ -128,7 +133,7 @@ function initState(groupsData) {
   mainKeyOwners = {};
   for (const g of groupsData) {
     for (const item of g.items) {
-      state.scanStatus[item.code] = false; // 初始为 false
+      state.scanStatus[item.code] = false;
     }
   }
   state.resetPending = true;
@@ -216,11 +221,11 @@ wss.on('connection', (ws) => {
               return;
             }
 
-            // ===== 新增：记录扫描时间（墨西哥城时区） =====
-            var now = new Date();
-            var timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' });
+            // ===== 记录扫描时间（墨西哥城时区） =====
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' });
             state.scanStatus[matchedItem.code] = timeStr;
-            // ==============================================
+            // =========================================
 
             broadcast();
             const scannedCount = Object.values(state.scanStatus).filter(v => v).length;
@@ -252,7 +257,7 @@ wss.on('connection', (ws) => {
           break;
         }
 
-        // 重置所有：彻底清空
+        // 重置所有：彻底清空所有数据
         case 'reset_all': {
           state.groups = [];
           state.selectedMainKeys = [];
@@ -298,7 +303,7 @@ loadStateFromDB().then(() => {
     console.log(`服务器运行在 http://0.0.0.0:${PORT}`);
   });
 
-  // 每日定时清理（凌晨3点）
+  // 每日定时清理（凌晨3点），只清理过期批次，不删除主码组
   setInterval(() => {
     console.log('⏰ Ejecutando limpieza programada...');
     cleanOldData();
