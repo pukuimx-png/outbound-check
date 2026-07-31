@@ -127,17 +127,33 @@ function broadcastRecipients() {
 
 // 上传新文件时，重置扫描状态并强制重新认证
 function initState(groupsData) {
-  state.groups = groupsData;
-  state.selectedMainKeys = [];
-  state.scanStatus = {};
-  mainKeyOwners = {};
-  for (const g of groupsData) {
-    for (const item of g.items) {
-      state.scanStatus[item.code] = false;
+    // ---- 合并新数据到现有 groups ----
+    var existingKeys = new Set(state.groups.map(g => g.key));
+    for (var i = 0; i < groupsData.length; i++) {
+        var newGroup = groupsData[i];
+        var index = state.groups.findIndex(g => g.key === newGroup.key);
+        if (index === -1) {
+            state.groups.push(newGroup); // 新 key，追加
+        } else {
+            state.groups[index] = newGroup; // 已存在，覆盖（以新数据为准）
+        }
     }
-  }
-  state.resetPending = true;
-  broadcast();
+
+    // ---- 重置扫描状态和已选主码 ----
+    state.selectedMainKeys = [];
+    state.scanStatus = {};
+    mainKeyOwners = {};
+    for (const g of state.groups) {
+        for (const item of g.items) {
+            state.scanStatus[item.code] = false;
+        }
+    }
+
+    // ---- 触发所有设备重新认证 ----
+    state.resetPending = true;
+
+    // 注意：不清除 state.batches 和 recipients
+    broadcast();
 }
 
 // ----- WebSocket 处理 -----
