@@ -355,6 +355,7 @@
         var state = { 
             groups: [], 
             historyGroups: [],   // 新增
+                     historyScanStatus: {},   // 新增
             selectedMainKeys: [], 
             scanStatus: {}, 
             resetPending: false, 
@@ -418,6 +419,15 @@
         function getAllGroups() {
             return (state.groups || []).concat(state.historyGroups || []);
         }
+function getScanStatusForCode(code) {
+    if (state.scanStatus[code] !== undefined) {
+        return state.scanStatus[code];
+    }
+    if (state.historyScanStatus && state.historyScanStatus[code] !== undefined) {
+        return state.historyScanStatus[code];
+    }
+    return false;
+}
 
         // ---- 调试面板折叠 ----
         var debugCollapsed = false;
@@ -1546,7 +1556,7 @@
                 for (var j = 0; j < g.items.length; j++) {
                     var item = g.items[j];
                     var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
-                    var scanned = state.scanStatus[item.code] || false;
+                    var scanned = getScanStatusForCode(item.code);
                     lines.push('  ' + String(j + 1).padStart(3, ' ') + '. ' + (scanned ? '✅' : '⬜') + ' ' + displayCode);
                 }
                 lines.push('');
@@ -1675,7 +1685,7 @@
                         for (var ji = 0; ji < g.items.length; ji++) {
                             var item = g.items[ji];
                             var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
-                            var scanned = state.scanStatus[item.code] || false;
+                            var scanned = getScanStatusForCode(item.code);
                             var scanTime = '';
                             if (scanned && typeof scanned === 'string') {
                                 scanTime = scanned;
