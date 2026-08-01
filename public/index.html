@@ -7,8 +7,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* 样式与17版完全相同，此处省略（实际文件需保留） */
-        /* 您可以直接使用之前17版的样式 */
+        /* ===== 样式完全保留原版，未修改 ===== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fb; padding: 8px; color: #1e293b; font-size: 15px; touch-action: manipulation; }
         .app { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -121,7 +120,7 @@
     </style>
 </head>
 <body>
-    <!-- HTML 结构与17版完全相同 -->
+    <!-- HTML 结构与原版完全相同，无改动 -->
     <div class="app" id="app">
         <h1>
             📦 Verificación de Salida
@@ -254,7 +253,7 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能：日期筛选、时间列、墨西哥城时区、修复 toggleDebugPanel
+        // v5.0 - 完整功能：日期筛选、时间列、墨西哥城时区、历史归档
         // ============================================================
         console.log('📦 Verificación de Salida v5.0 - 20260726');
 
@@ -346,15 +345,22 @@
             return count === 1 ? '1 caja' : count + ' cajas';
         }
 
-        // ---- 全局状态 ----
+        // ---- 全局状态（已添加 historyGroups） ----
         var ws = null;
         var operator = '';
         var vehicle = '';
         var localMode = 'main';
         var taskKeys = [];
         var pendingKeys = [];
-        var state = { groups: [], selectedMainKeys: [], scanStatus: {}, resetPending: false, batches: [] };
-        var allGroups = [];
+        var state = { 
+            groups: [], 
+            historyGroups: [],   // 新增
+            selectedMainKeys: [], 
+            scanStatus: {}, 
+            resetPending: false, 
+            batches: [] 
+        };
+        var allGroups = [];      // 不再直接使用，改用 getAllGroups()
         var allRows = [];
         var allRecipients = [];
         var selectedAddresses = [];
@@ -408,7 +414,12 @@
         var uploadZone = document.getElementById('uploadZone');
         var exportDateSelect = document.getElementById('exportDateSelect');
 
-        // ---- 调试面板折叠（新增缺失函数） ----
+        // ---- 辅助函数：获取完整主码（当前 + 历史） ----
+        function getAllGroups() {
+            return (state.groups || []).concat(state.historyGroups || []);
+        }
+
+        // ---- 调试面板折叠 ----
         var debugCollapsed = false;
         function toggleDebugPanel() {
             var content = document.getElementById('debugContent');
@@ -490,7 +501,7 @@
             }, duration);
         }
 
-        // ---- 统计 ----
+        // ---- 统计（仅基于当前 groups，不包含历史） ----
         function getTaskStats() {
             var total = 0,
                 scanned = 0;
@@ -508,12 +519,13 @@
         }
 
         function getGlobalStats() {
-            var totalMain = state.groups.length;
+            var groups = state.groups;  // 只统计当前工作数据
+            var totalMain = groups.length;
             var totalBoxes = 0,
                 completedMain = 0,
                 unscannedBoxes = 0;
-            for (var i = 0; i < state.groups.length; i++) {
-                var g = state.groups[i];
+            for (var i = 0; i < groups.length; i++) {
+                var g = groups[i];
                 totalBoxes += g.items.length;
                 var allScanned = g.items.every(function(item) { return state.scanStatus[item.code]; });
                 if (allScanned) completedMain++;
@@ -618,7 +630,7 @@
                 document.getElementById('selectedAddressesDisplay').style.display = 'none';
             }
 
-            // 按地址统计箱数
+            // 按地址统计箱数（仅当前数据）
             var statsContainer = document.getElementById('addressStatsGlobal');
             if (statsContainer) {
                 var addrMap = {};
@@ -681,7 +693,7 @@
             triggerAutoScan();
         });
 
-        // ---- 扫描处理 ----
+        // ---- 扫描处理（仅当前数据） ----
         window.handleScan = function() {
             var code = scanInput.value.trim();
             if (!code) {
@@ -768,7 +780,7 @@
                         var data = JSON.parse(event.data);
                         console.log('📨 Mensaje recibido:', data);
                         if (data.type === 'state') {
-                            state = data.state;
+                            state = data.state;   // 服务器返回的 state 已包含 historyGroups
                             if (state.batches) {
                                 batches = state.batches;
                             }
@@ -987,7 +999,7 @@
                 operator: currentOperator,
                 vehicle: currentVehicle,
                 addresses: selectedAddresses.slice(),
-                // 使用墨西哥城时区
+                // 客户端生成日期，但服务器会覆盖为墨西哥城日期
                 createdAt: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
             };
             batches.push(newBatch);
@@ -1117,7 +1129,7 @@
             updateStatusBar();
         };
 
-        // ---- 渲染清单 ----
+        // ---- 渲染清单（仅当前数据） ----
         function renderList() {
             var groups = state.groups;
             if (groups.length === 0) {
@@ -1451,8 +1463,8 @@
                     allRows = parsed.rows;
 
                     var completeGroups = buildGroupsFromRows(parsed.rows);
-                    allGroups = completeGroups;
-                    state.groups = completeGroups;  // 立即更新
+                    // 直接设置 state.groups，历史数据由服务器归档
+                    state.groups = completeGroups;
                     renderList();                    // 立即渲染
 
                     var recips = parsed.recipients || [];
@@ -1489,13 +1501,14 @@
             reader.readAsArrayBuffer(file);
         };
 
-        // ---- 导出 TXT（文件名使用墨西哥城时区） ----
+        // ---- 导出 TXT（合并历史数据） ----
         window.exportTxt = function() {
             var selectedDate = exportDateSelect.value;
+            var allGroups = getAllGroups();   // 当前 + 历史
             var groupsToExport = [];
 
             if (selectedDate === 'all') {
-                groupsToExport = state.groups.slice();
+                groupsToExport = allGroups.slice();
             } else {
                 var filteredBatches = batches.filter(function(b) {
                     return (b.createdAt || '') === selectedDate;
@@ -1506,11 +1519,12 @@
                         keysInFilteredBatches.add(k);
                     });
                 });
-                groupsToExport = state.groups.filter(function(g) {
+                groupsToExport = allGroups.filter(function(g) {
                     return keysInFilteredBatches.has(g.key);
                 });
             }
 
+            // 地址筛选
             if (selectedAddresses.length > 0) {
                 groupsToExport = groupsToExport.filter(function(g) {
                     return g.recipients && g.recipients.some(function(r) {
@@ -1555,7 +1569,7 @@
             showToast('📄 TXT exportado', 'success');
         };
 
-        // ---- 导出 Excel（新增时间列，时区，导出日期与所选一致） ----
+        // ---- 导出 Excel（合并历史数据） ----
         window.exportExcel = function() {
             var selectedDate = exportDateSelect.value;
             var filteredBatches = batches;
@@ -1576,6 +1590,7 @@
                 });
             });
 
+            var allGroups = getAllGroups();   // 当前 + 历史
             var wb = XLSX.utils.book_new();
             var groups = {};
             for (var i = 0; i < filteredBatches.length; i++) {
@@ -1614,27 +1629,25 @@
                 var now = new Date();
                 var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
 
-                // 生成导出日期：如果选具体日期则用该日期，否则用当前墨西哥城日期
+                // 生成导出日期
                 var exportDateDisplay;
                 if (selectedDate === 'all') {
                     var dateObj = new Date();
-                    var datePart = dateObj.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }); // YYYY-MM-DD
+                    var datePart = dateObj.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
                     var timePart = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Mexico_City' });
                     exportDateDisplay = datePart + ' ' + timePart;
                 } else {
-                    // 使用所选日期，时间取当前墨西哥城时间
                     var dateObj = new Date();
                     var timePart = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Mexico_City' });
                     exportDateDisplay = selectedDate + ' ' + timePart;
                 }
 
-                rows.push(['扫描员Escaneador:', group.operator]);
-                rows.push(['车牌Placa:', group.vehicle]);
+                rows.push(['扫描员Escaneador:', group.operator || operator || '']);
+                rows.push(['车牌Placa:', group.vehicle || vehicle || '']);
                 rows.push(['导出日期Fecha:', exportDateDisplay]);
                 rows.push(['地址Direccion de entrega:', addrDisplay]);
                 rows.push([]);
 
-                // 表头增加“时间/Hora”
                 var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima', '时间/Hora'];
                 rows.push(headers);
 
@@ -1649,7 +1662,7 @@
 
                     for (var ki = 0; ki < batchKeys.length; ki++) {
                         var key = batchKeys[ki];
-                        var g = state.groups.find(function(gr) { return gr.key === key; });
+                        var g = allGroups.find(function(gr) { return gr.key === key; });
                         if (!g) continue;
                         var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
                         var totalBoxes = g.items.length;
@@ -1663,7 +1676,6 @@
                             var item = g.items[ji];
                             var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
                             var scanned = state.scanStatus[item.code] || false;
-                            // 获取扫描时间
                             var scanTime = '';
                             if (scanned && typeof scanned === 'string') {
                                 scanTime = scanned;

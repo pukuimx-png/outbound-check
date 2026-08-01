@@ -12,12 +12,13 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
   .then(() => console.log('✅ MongoDB conectado'))
   .catch(err => console.error('❌ Error MongoDB:', err));
 
-// ----- 定义状态 Schema（一个文档） -----
+// ----- 定义状态 Schema -----
 const StateSchema = new mongoose.Schema({
   state: {
     groups: Array,
+    historyGroups: Array,   // 新增：存储历史主码
     selectedMainKeys: [String],
-    scanStatus: Object,  // 存储布尔值或时间字符串
+    scanStatus: Object,
     resetPending: Boolean,
     batches: Array
   },
@@ -31,9 +32,10 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// 默认状态（首次启动使用）
+// 默认状态
 let state = {
   groups: [],
+  historyGroups: [],
   selectedMainKeys: [],
   scanStatus: {},
   resetPending: false,
@@ -42,7 +44,7 @@ let state = {
 let recipients = [];
 let mainKeyOwners = {};
 
-// ========== 自动清理：保留最近30天（仅清理批次，不删除主码组） ==========
+// ========== 自动清理（保留最近30天，仅清理批次） ==========
 const KEEP_DAYS = 30;
 
 function cleanOldData() {
@@ -125,36 +127,32 @@ function broadcastRecipients() {
   saveStateToDB();
 }
 
-// 上传新文件时，重置扫描状态并强制重新认证
+// ===== 修改：上传文件时归档旧数据，仅显示新数据 =====
 function initState(groupsData) {
-    // ---- 合并新数据到现有 groups ----
-    var existingKeys = new Set(state.groups.map(g => g.key));
-    for (var i = 0; i < groupsData.length; i++) {
-        var newGroup = groupsData[i];
-        var index = state.groups.findIndex(g => g.key === newGroup.key);
-        if (index === -1) {
-            state.groups.push(newGroup); // 新 key，追加
-        } else {
-            state.groups[index] = newGroup; // 已存在，覆盖（以新数据为准）
-        }
+    // ---- 归档旧主码 ----
+    if (state.groups.length > 0) {
+        // 合并到历史（避免重复，可简单追加）
+        state.historyGroups = state.historyGroups.concat(state.groups);
     }
 
-    // ---- 重置扫描状态和已选主码 ----
+    // ---- 替换当前工作数据 ----
+    state.groups = groupsData;
     state.selectedMainKeys = [];
     state.scanStatus = {};
     mainKeyOwners = {};
-    for (const g of state.groups) {
+    for (const g of groupsData) {
         for (const item of g.items) {
             state.scanStatus[item.code] = false;
         }
     }
 
-    // ---- 触发所有设备重新认证 ----
+    // ---- 强制重新认证 ----
     state.resetPending = true;
 
-    // 注意：不清除 state.batches 和 recipients
+    // 保留 state.batches 和 recipients
     broadcast();
 }
+// =====================================================
 
 // ----- WebSocket 处理 -----
 wss.on('connection', (ws) => {
@@ -237,11 +235,10 @@ wss.on('connection', (ws) => {
               return;
             }
 
-            // ===== 记录扫描时间（墨西哥城时区） =====
+            // 记录扫描时间（墨西哥城时区）
             const now = new Date();
             const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' });
             state.scanStatus[matchedItem.code] = timeStr;
-            // =========================================
 
             broadcast();
             const scannedCount = Object.values(state.scanStatus).filter(v => v).length;
@@ -276,6 +273,7 @@ wss.on('connection', (ws) => {
         // 重置所有：彻底清空所有数据
         case 'reset_all': {
           state.groups = [];
+          state.historyGroups = [];
           state.selectedMainKeys = [];
           state.scanStatus = {};
           mainKeyOwners = {};
@@ -292,18 +290,18 @@ wss.on('connection', (ws) => {
           break;
         }
 
-case 'add_batch': {
-    const { batch } = data;
-    if (batch) {
-        // 使用服务器当前墨西哥城日期覆盖客户端日期
-        const now = new Date();
-        const createdAt = now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
-        batch.createdAt = createdAt;
-        state.batches.push(batch);
-        broadcast();
-    }
-    break;
-}
+        case 'add_batch': {
+          const { batch } = data;
+          if (batch) {
+            // 覆盖客户端日期，使用服务器墨西哥城日期
+            const now = new Date();
+            const createdAt = now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+            batch.createdAt = createdAt;
+            state.batches.push(batch);
+            broadcast();
+          }
+          break;
+        }
 
         default:
           break;
@@ -323,7 +321,7 @@ loadStateFromDB().then(() => {
     console.log(`服务器运行在 http://0.0.0.0:${PORT}`);
   });
 
-  // 每日定时清理（凌晨3点），只清理过期批次，不删除主码组
+  // 每日定时清理（凌晨3点）
   setInterval(() => {
     console.log('⏰ Ejecutando limpieza programada...');
     cleanOldData();
