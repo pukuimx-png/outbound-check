@@ -16,7 +16,8 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
 const StateSchema = new mongoose.Schema({
   state: {
     groups: Array,
-    historyGroups: Array,   // 新增：存储历史主码
+    historyGroups: Array,
+    historyScanStatus: Object,   // 新增：存储历史扫描状态
     selectedMainKeys: [String],
     scanStatus: Object,
     resetPending: Boolean,
@@ -36,6 +37,7 @@ const wss = new WebSocket.Server({ server });
 let state = {
   groups: [],
   historyGroups: [],
+  historyScanStatus: {},
   selectedMainKeys: [],
   scanStatus: {},
   resetPending: false,
@@ -127,12 +129,21 @@ function broadcastRecipients() {
   saveStateToDB();
 }
 
-// ===== 修改：上传文件时归档旧数据，仅显示新数据 =====
+// ===== 核心修改：上传新文件时归档旧数据及其扫描状态 =====
 function initState(groupsData) {
-    // ---- 归档旧主码 ----
+    // ---- 归档旧主码及扫描状态 ----
     if (state.groups.length > 0) {
-        // 合并到历史（避免重复，可简单追加）
+        // 将当前 groups 追加到历史
         state.historyGroups = state.historyGroups.concat(state.groups);
+        // 保存当前扫描状态到历史
+        for (const g of state.groups) {
+            for (const item of g.items) {
+                const code = item.code;
+                if (state.scanStatus[code]) {
+                    state.historyScanStatus[code] = state.scanStatus[code];
+                }
+            }
+        }
     }
 
     // ---- 替换当前工作数据 ----
@@ -270,10 +281,11 @@ wss.on('connection', (ws) => {
           break;
         }
 
-        // 重置所有：彻底清空所有数据
+        // 重置所有：彻底清空所有数据（包括历史）
         case 'reset_all': {
           state.groups = [];
           state.historyGroups = [];
+          state.historyScanStatus = {};
           state.selectedMainKeys = [];
           state.scanStatus = {};
           mainKeyOwners = {};
