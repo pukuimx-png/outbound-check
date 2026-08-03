@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Verificación de Salida - PDA</title>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    <!-- 添加 defer 属性，异步加载，不阻塞渲染 -->
+    <script defer src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
         /* ===== 样式完全保留原版，未修改 ===== */
@@ -819,7 +820,7 @@ function getScanStatusForCode(code) {
                                 localMode = 'main';
                                 updateStatusBar();
                                 renderList();
-                                fileInfo.innerHTML = '📂 Datos restablecidos, suba un nuevo archivo';
+                                fileInfo.innerHTML = '📂 Datos restablecidos，suba un nuevo archivo';
                                 allGroups = [];
                                 allRecipients = [];
                                 allRows = [];
