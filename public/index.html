@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Verificación de Salida - PDA</title>
-    <!-- 添加 defer 属性，异步加载，不阻塞渲染 -->
+    <!-- 保留 XLSX 库，异步加载 -->
     <script defer src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
@@ -229,7 +229,7 @@
             <button class="btn btn-success" id="exportTxtBtn">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn">📊 Excel</button>
         </div>
-        <div class="version-tag">v5.0 - 20260726</div>
+        <div class="version-tag">v5.0 - 20260805 (optimizado)</div>
     </div>
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
@@ -254,9 +254,9 @@
 
     <script>
         // ============================================================
-        // v5.0 - 完整功能：日期筛选、时间列、墨西哥城时区、历史归档
+        // v5.0 optimizado - Incremental WebSocket + Server-side gzip export
         // ============================================================
-        console.log('📦 Verificación de Salida v5.0 - 20260726');
+        console.log('📦 Verificación de Salida v5.0 - 20260805');
 
         // ---- 语言文本 ----
         var LANG = {
@@ -346,7 +346,7 @@
             return count === 1 ? '1 caja' : count + ' cajas';
         }
 
-        // ---- 全局状态（已添加 historyGroups） ----
+        // ---- 全局状态 ----
         var ws = null;
         var operator = '';
         var vehicle = '';
@@ -355,14 +355,14 @@
         var pendingKeys = [];
         var state = { 
             groups: [], 
-            historyGroups: [],   // 新增
-                     historyScanStatus: {},   // 新增
+            historyGroups: [], 
+            historyScanStatus: {},
             selectedMainKeys: [], 
             scanStatus: {}, 
             resetPending: false, 
             batches: [] 
         };
-        var allGroups = [];      // 不再直接使用，改用 getAllGroups()
+        var allGroups = [];
         var allRows = [];
         var allRecipients = [];
         var selectedAddresses = [];
@@ -416,21 +416,17 @@
         var uploadZone = document.getElementById('uploadZone');
         var exportDateSelect = document.getElementById('exportDateSelect');
 
-        // ---- 辅助函数：获取完整主码（当前 + 历史） ----
+        // ---- 辅助函数 ----
         function getAllGroups() {
             return (state.groups || []).concat(state.historyGroups || []);
         }
-function getScanStatusForCode(code) {
-    if (state.scanStatus[code] !== undefined) {
-        return state.scanStatus[code];
-    }
-    if (state.historyScanStatus && state.historyScanStatus[code] !== undefined) {
-        return state.historyScanStatus[code];
-    }
-    return false;
-}
+        function getScanStatusForCode(code) {
+            if (state.scanStatus[code] !== undefined) return state.scanStatus[code];
+            if (state.historyScanStatus && state.historyScanStatus[code] !== undefined) return state.historyScanStatus[code];
+            return false;
+        }
 
-        // ---- 调试面板折叠 ----
+        // ---- 调试面板 ----
         var debugCollapsed = false;
         function toggleDebugPanel() {
             var content = document.getElementById('debugContent');
@@ -446,7 +442,6 @@ function getScanStatusForCode(code) {
             }
         }
 
-        // ---- 调试面板 ----
         function updateDebug(msg, type) {
             type = type || 'info';
             var content = document.getElementById('debugContent');
@@ -512,10 +507,9 @@ function getScanStatusForCode(code) {
             }, duration);
         }
 
-        // ---- 统计（仅基于当前 groups，不包含历史） ----
+        // ---- 统计函数 ----
         function getTaskStats() {
-            var total = 0,
-                scanned = 0;
+            var total = 0, scanned = 0;
             for (var i = 0; i < taskKeys.length; i++) {
                 var key = taskKeys[i];
                 var g = state.groups.find(function(gr) { return gr.key === key; });
@@ -530,11 +524,9 @@ function getScanStatusForCode(code) {
         }
 
         function getGlobalStats() {
-            var groups = state.groups;  // 只统计当前工作数据
+            var groups = state.groups;
             var totalMain = groups.length;
-            var totalBoxes = 0,
-                completedMain = 0,
-                unscannedBoxes = 0;
+            var totalBoxes = 0, completedMain = 0, unscannedBoxes = 0;
             for (var i = 0; i < groups.length; i++) {
                 var g = groups[i];
                 totalBoxes += g.items.length;
@@ -641,7 +633,6 @@ function getScanStatusForCode(code) {
                 document.getElementById('selectedAddressesDisplay').style.display = 'none';
             }
 
-            // 按地址统计箱数（仅当前数据）
             var statsContainer = document.getElementById('addressStatsGlobal');
             if (statsContainer) {
                 var addrMap = {};
@@ -670,9 +661,7 @@ function getScanStatusForCode(code) {
                 }
             }
 
-            // 更新日期选择器
             updateDateSelector();
-
             saveLocalState();
 
             if (localMode === 'sub' && taskKeys.length > 0 && stats.total > 0 && stats.scanned === stats.total) {
@@ -684,7 +673,7 @@ function getScanStatusForCode(code) {
             }
         }
 
-        // ---- 自动连续扫描 (90ms) ----
+        // ---- 自动扫描 ----
         function triggerAutoScan() {
             var val = scanInput.value.trim();
             if (val.length >= 3) {
@@ -704,7 +693,7 @@ function getScanStatusForCode(code) {
             triggerAutoScan();
         });
 
-        // ---- 扫描处理（仅当前数据） ----
+        // ---- 扫描处理 ----
         window.handleScan = function() {
             var code = scanInput.value.trim();
             if (!code) {
@@ -770,7 +759,7 @@ function getScanStatusForCode(code) {
             }
         }
 
-        // ---- WebSocket ----
+        // ---- WebSocket（支持增量消息）----
         function connectWebSocket() {
             if (ws && ws.readyState === WebSocket.OPEN) return;
             try {
@@ -789,12 +778,12 @@ function getScanStatusForCode(code) {
                 ws.onmessage = function(event) {
                     try {
                         var data = JSON.parse(event.data);
-                        console.log('📨 Mensaje recibido:', data);
+                        console.log('📨 Mensaje recibido:', data.type, data);
+                        // --- 处理全量状态（首次连接 / reset）---
                         if (data.type === 'state') {
-                            state = data.state;   // 服务器返回的 state 已包含 historyGroups
-                            if (state.batches) {
-                                batches = state.batches;
-                            }
+                            state = data.state;
+                            if (state.batches) batches = state.batches;
+                            // 重置相关
                             if (state.resetPending === true && !resetHandledThisSession) {
                                 resetHandledThisSession = true;
                                 localStorage.removeItem('operator');
@@ -808,10 +797,8 @@ function getScanStatusForCode(code) {
                                 operatorDisplay.textContent = '-';
                                 vehicleDisplay.textContent = '-';
                                 renderAddressSelector([], [], false);
-                                showToast('🔐 数据已重置，请重新认证', 'warning', 3000);
-                                setTimeout(function() {
-                                    window.showOperatorModal(false);
-                                }, 500);
+                                showToast('🔐 Datos reseteados, autentique nuevamente', 'warning', 3000);
+                                setTimeout(function() { window.showOperatorModal(false); }, 500);
                                 if (ws && ws.readyState === WebSocket.OPEN) {
                                     ws.send(JSON.stringify({ type: 'reset_confirmed', deviceId: deviceId }));
                                 }
@@ -820,7 +807,7 @@ function getScanStatusForCode(code) {
                                 localMode = 'main';
                                 updateStatusBar();
                                 renderList();
-                                fileInfo.innerHTML = '📂 Datos restablecidos，suba un nuevo archivo';
+                                fileInfo.innerHTML = '📂 Datos restablecidos, suba un archivo';
                                 allGroups = [];
                                 allRecipients = [];
                                 allRows = [];
@@ -836,7 +823,10 @@ function getScanStatusForCode(code) {
                             renderList();
                             updateStatusBar();
                             setTimeout(function() { scanInput.focus(); }, 100);
-                        } else if (data.type === 'addresses') {
+                            return;
+                        }
+                        // --- 增量消息处理 ---
+                        if (data.type === 'addresses') {
                             allRecipients = data.recipients || [];
                             if (allRows.length > 0) {
                                 var readonly = false;
@@ -850,7 +840,68 @@ function getScanStatusForCode(code) {
                                 renderAddressSelector(allRecipients, [], false);
                             }
                             setTimeout(function() { scanInput.focus(); }, 100);
-                        } else if (data.type === 'success') {
+                            return;
+                        }
+                        if (data.type === 'main_added') {
+                            state.selectedMainKeys.push(data.key);
+                            renderList();
+                            updateStatusBar();
+                            return;
+                        }
+                        if (data.type === 'sub_scanned') {
+                            state.scanStatus[data.code] = data.time;
+                            renderList();
+                            updateStatusBar();
+                            return;
+                        }
+                        if (data.type === 'keys_released') {
+                            data.keys.forEach(function(key) {
+                                var idx = state.selectedMainKeys.indexOf(key);
+                                if (idx !== -1) state.selectedMainKeys.splice(idx, 1);
+                                var g = state.groups.find(function(gr) { return gr.key === key; });
+                                if (g) {
+                                    g.items.forEach(function(item) { state.scanStatus[item.code] = false; });
+                                }
+                            });
+                            renderList();
+                            updateStatusBar();
+                            return;
+                        }
+                        if (data.type === 'batch_added') {
+                            state.batches.push(data.batch);
+                            updateStatusBar(); // refresh date selector
+                            return;
+                        }
+                        if (data.type === 'reset_confirmed') {
+                            state.resetPending = false;
+                            return;
+                        }
+                        if (data.type === 'batch_update') {
+                            // 批量更新（节流合并）
+                            data.updates.forEach(function(update) {
+                                if (update.type === 'main_added') {
+                                    state.selectedMainKeys.push(update.key);
+                                } else if (update.type === 'sub_scanned') {
+                                    state.scanStatus[update.code] = update.time;
+                                } else if (update.type === 'keys_released') {
+                                    update.keys.forEach(function(key) {
+                                        var idx = state.selectedMainKeys.indexOf(key);
+                                        if (idx !== -1) state.selectedMainKeys.splice(idx, 1);
+                                        var g = state.groups.find(function(gr) { return gr.key === key; });
+                                        if (g) {
+                                            g.items.forEach(function(item) { state.scanStatus[item.code] = false; });
+                                        }
+                                    });
+                                } else if (update.type === 'batch_added') {
+                                    state.batches.push(update.batch);
+                                }
+                            });
+                            renderList();
+                            updateStatusBar();
+                            return;
+                        }
+                        // ---- 原有 success / error 处理 ----
+                        if (data.type === 'success') {
                             var msg = data.message;
                             console.log('🔍 Mensaje de éxito:', msg);
                             var patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
@@ -898,20 +949,11 @@ function getScanStatusForCode(code) {
                             var subMatch = msg.match(/✅ 已扫描:\s*([^\s]+)\s*\((\d+)\/(\d+)\)/);
                             if (subMatch) {
                                 var code = subMatch[1];
-                                var scanned = parseInt(subMatch[2]);
-                                var total = parseInt(subMatch[3]);
-                                for (var i = 0; i < state.groups.length; i++) {
-                                    var g = state.groups[i];
-                                    for (var j = 0; j < g.items.length; j++) {
-                                        if (g.items[j].code === code) {
-                                            state.scanStatus[code] = true;
-                                            break;
-                                        }
-                                    }
-                                }
+                                // 已通过增量更新处理，但为了兼容，也设置状态
+                                state.scanStatus[code] = true;
                                 renderList();
                                 updateStatusBar();
-                                showToast('Escaneado ' + code + ' (' + scanned + '/' + total + ')', 'success', 2000);
+                                showToast('Escaneado ' + code + ' (' + subMatch[2] + '/' + subMatch[3] + ')', 'success', 2000);
                                 scanInput.value = '';
                                 setTimeout(function() { scanInput.focus(); }, 100);
                                 return;
@@ -919,7 +961,9 @@ function getScanStatusForCode(code) {
                             showToast(msg, 'success', 2000);
                             scanInput.value = '';
                             setTimeout(function() { scanInput.focus(); }, 100);
-                        } else if (data.type === 'error') {
+                            return;
+                        }
+                        if (data.type === 'error') {
                             var errMsg = data.message;
                             errMsg = errMsg.replace(/❌ 主码 /g, '❌ Código ');
                             errMsg = errMsg.replace(/已被其他设备锁定，不可重复扫描/g, 'bloqueado por otro dispositivo, no se puede repetir');
@@ -980,7 +1024,7 @@ function getScanStatusForCode(code) {
             connectWebSocket();
         };
 
-        // ---- 结束主码（修改 createdAt 时区） ----
+        // ---- 结束主码（生成批次） ----
         window.switchToSubMode = function() {
             if (pendingKeys.length === 0) {
                 showToast('No ha agregado ningún código', 'warning');
@@ -1010,7 +1054,6 @@ function getScanStatusForCode(code) {
                 operator: currentOperator,
                 vehicle: currentVehicle,
                 addresses: selectedAddresses.slice(),
-                // 客户端生成日期，但服务器会覆盖为墨西哥城日期
                 createdAt: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
             };
             batches.push(newBatch);
@@ -1140,7 +1183,7 @@ function getScanStatusForCode(code) {
             updateStatusBar();
         };
 
-        // ---- 渲染清单（仅当前数据） ----
+        // ---- 渲染清单 ----
         function renderList() {
             var groups = state.groups;
             if (groups.length === 0) {
@@ -1439,7 +1482,6 @@ function getScanStatusForCode(code) {
                 };
             }
 
-            // 自动展开
             if (recipients && recipients.length > 0) {
                 addressCollapsed = false;
                 addressBody.classList.remove('collapsed');
@@ -1449,7 +1491,7 @@ function getScanStatusForCode(code) {
         }
 
         window.confirmAddressSelection = function() {
-            // 由 inlineConfirmAddress.onclick 处理
+            // handled by inlineConfirmAddress onclick
         };
 
         // ---- 上传文件 ----
@@ -1474,9 +1516,8 @@ function getScanStatusForCode(code) {
                     allRows = parsed.rows;
 
                     var completeGroups = buildGroupsFromRows(parsed.rows);
-                    // 直接设置 state.groups，历史数据由服务器归档
                     state.groups = completeGroups;
-                    renderList();                    // 立即渲染
+                    renderList();
 
                     var recips = parsed.recipients || [];
                     allRecipients = recips;
@@ -1512,222 +1553,60 @@ function getScanStatusForCode(code) {
             reader.readAsArrayBuffer(file);
         };
 
-        // ---- 导出 TXT（合并历史数据） ----
+        // ---- 导出 TXT（服务器 gzip） ----
         window.exportTxt = function() {
-            var selectedDate = exportDateSelect.value;
-            var allGroups = getAllGroups();   // 当前 + 历史
-            var groupsToExport = [];
-
-            if (selectedDate === 'all') {
-                groupsToExport = allGroups.slice();
-            } else {
-                var filteredBatches = batches.filter(function(b) {
-                    return (b.createdAt || '') === selectedDate;
-                });
-                var keysInFilteredBatches = new Set();
-                filteredBatches.forEach(function(b) {
-                    b.keys.forEach(function(k) {
-                        keysInFilteredBatches.add(k);
-                    });
-                });
-                groupsToExport = allGroups.filter(function(g) {
-                    return keysInFilteredBatches.has(g.key);
-                });
-            }
-
-            // 地址筛选
-            if (selectedAddresses.length > 0) {
-                groupsToExport = groupsToExport.filter(function(g) {
-                    return g.recipients && g.recipients.some(function(r) {
-                        return selectedAddresses.includes(r);
-                    });
-                });
-            }
-
-            var lines = ['Lista de verificación', 'Generado: ' + new Date().toLocaleString()];
-            if (selectedDate !== 'all') lines.push('Fecha filtrada: ' + selectedDate);
-            if (selectedAddresses.length) lines.push('Destinatarios: ' + selectedAddresses.join(', '));
-            lines.push('─'.repeat(50));
-
-            var hasData = false;
-            for (var i = 0; i < groupsToExport.length; i++) {
-                var g = groupsToExport[i];
-                hasData = true;
-                lines.push('【' + (g.type === 'fba' ? 'FBA' : 'Custom') + ': ' + g.key + '】 ' + g.items.length + ' cajas');
-                for (var j = 0; j < g.items.length; j++) {
-                    var item = g.items[j];
-                    var displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
-                    var scanned = getScanStatusForCode(item.code);
-                    lines.push('  ' + String(j + 1).padStart(3, ' ') + '. ' + (scanned ? '✅' : '⬜') + ' ' + displayCode);
-                }
-                lines.push('');
-            }
-
-            if (!hasData) {
-                showToast('⚠️ 没有数据可导出', 'warning');
-                return;
-            }
-
-            var blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            var fileName = 'Verificacion';
-            if (selectedDate !== 'all') fileName += '_' + selectedDate;
-            else fileName += '_' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
-            a.download = fileName + '.txt';
-            a.click();
-            URL.revokeObjectURL(a.href);
-            showToast('📄 TXT exportado', 'success');
+            var date = document.getElementById('exportDateSelect').value;
+            var addresses = selectedAddresses || [];
+            fetch('/export/txt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, addresses, operator, vehicle })
+            })
+            .then(function(res) {
+                if (!res.ok) return res.json().then(function(err) { return Promise.reject(err); });
+                return res.blob();
+            })
+            .then(function(blob) {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'Verificacion_' + (date || 'all') + '.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('📄 TXT exportado', 'success');
+            })
+            .catch(function(err) {
+                console.error(err);
+                showToast('❌ Error al exportar: ' + (err.error || 'desconocido'), 'error');
+            });
         };
 
-        // ---- 导出 Excel（合并历史数据） ----
+        // ---- 导出 Excel（服务器 gzip） ----
         window.exportExcel = function() {
-            var selectedDate = exportDateSelect.value;
-            var filteredBatches = batches;
-            if (selectedDate !== 'all') {
-                filteredBatches = batches.filter(function(b) {
-                    return (b.createdAt || '') === selectedDate;
-                });
-            }
-            if (filteredBatches.length === 0) {
-                showToast('⚠️ 没有数据可导出', 'warning');
-                return;
-            }
-
-            var keysInFilteredBatches = new Set();
-            filteredBatches.forEach(function(b) {
-                b.keys.forEach(function(k) {
-                    keysInFilteredBatches.add(k);
-                });
+            var date = document.getElementById('exportDateSelect').value;
+            var addresses = selectedAddresses || [];
+            fetch('/export/excel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, addresses, operator, vehicle })
+            })
+            .then(function(res) {
+                if (!res.ok) return res.json().then(function(err) { return Promise.reject(err); });
+                return res.blob();
+            })
+            .then(function(blob) {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'Verificacion_' + (date || 'all') + '.xlsx';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('📊 Excel exportado', 'success');
+            })
+            .catch(function(err) {
+                console.error(err);
+                showToast('❌ Error al exportar: ' + (err.error || 'desconocido'), 'error');
             });
-
-            var allGroups = getAllGroups();   // 当前 + 历史
-            var wb = XLSX.utils.book_new();
-            var groups = {};
-            for (var i = 0; i < filteredBatches.length; i++) {
-                var b = filteredBatches[i];
-                var op = b.operator || '';
-                var veh = b.vehicle || '';
-                var addrList = b.addresses || [];
-                var batchAddresses = addrList.filter(function(addr) {
-                    return selectedAddresses.length === 0 || selectedAddresses.includes(addr);
-                });
-                if (batchAddresses.length === 0) continue;
-                var addrKey = batchAddresses.length ? batchAddresses.join(',') : '';
-                var dateKey = b.createdAt || '';
-                var groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
-                if (!groups[groupKey]) {
-                    groups[groupKey] = {
-                        operator: op,
-                        vehicle: veh,
-                        addresses: batchAddresses,
-                        date: dateKey,
-                        batches: []
-                    };
-                }
-                groups[groupKey].batches.push(b);
-            }
-
-            if (Object.keys(groups).length === 0) {
-                showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
-                return;
-            }
-
-            var sheetIndex = 1;
-            for (var gKey in groups) {
-                var group = groups[gKey];
-                var rows = [];
-                var now = new Date();
-                var addrDisplay = group.addresses && group.addresses.length ? group.addresses.join(', ') : '';
-
-                // 生成导出日期
-                var exportDateDisplay;
-                if (selectedDate === 'all') {
-                    var dateObj = new Date();
-                    var datePart = dateObj.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
-                    var timePart = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Mexico_City' });
-                    exportDateDisplay = datePart + ' ' + timePart;
-                } else {
-                    var dateObj = new Date();
-                    var timePart = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Mexico_City' });
-                    exportDateDisplay = selectedDate + ' ' + timePart;
-                }
-
-                rows.push(['扫描员Escaneador:', group.operator || operator || '']);
-                rows.push(['车牌Placa:', group.vehicle || vehicle || '']);
-                rows.push(['导出日期Fecha:', exportDateDisplay]);
-                rows.push(['地址Direccion de entrega:', addrDisplay]);
-                rows.push([]);
-
-                var headers = ['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima', '时间/Hora'];
-                rows.push(headers);
-
-                var idx = 0;
-                for (var bi = 0; bi < group.batches.length; bi++) {
-                    var batch = group.batches[bi];
-                    var tarimaName = batch.name || 'Tarima' + (bi + 1);
-                    var batchKeys = batch.keys.filter(function(key) {
-                        return keysInFilteredBatches.has(key) && (selectedAddresses.length === 0 || getFilteredMainKeys().includes(key));
-                    });
-                    if (batchKeys.length === 0) continue;
-
-                    for (var ki = 0; ki < batchKeys.length; ki++) {
-                        var key = batchKeys[ki];
-                        var g = allGroups.find(function(gr) { return gr.key === key; });
-                        if (!g) continue;
-                        var typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
-                        var totalBoxes = g.items.length;
-                        var boxWord = totalBoxes === 1 ? 'caja' : 'cajas';
-                        var totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + boxWord;
-
-                        idx++;
-                        rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
-
-                        for (var ji = 0; ji < g.items.length; ji++) {
-                            var item = g.items[ji];
-                            var displayCode = g.type === 'fba' ? g.key + '/' + (ji + 1) : item.code;
-                            var scanned = getScanStatusForCode(item.code);
-                            var scanTime = '';
-                            if (scanned && typeof scanned === 'string') {
-                                scanTime = scanned;
-                            } else if (scanned === true) {
-                                scanTime = '-';
-                            }
-                            rows.push(['', '', '', ji + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, tarimaName, scanTime]);
-                        }
-                    }
-                }
-
-                if (rows.length <= 5) continue;
-
-                var cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
-                var sheetName = sheetIndex + '_' + cleanVehicle + '_' + (group.date || 'nodate');
-                if (sheetName.length > 31) {
-                    sheetName = sheetName.substring(0, 31);
-                }
-
-                var ws = XLSX.utils.aoa_to_sheet(rows);
-                ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
-                XLSX.utils.book_append_sheet(wb, ws, sheetName);
-                sheetIndex++;
-            }
-
-            if (wb.SheetNames.length === 0) {
-                showToast('⚠️ 当前筛选条件下没有可导出的数据', 'warning');
-                return;
-            }
-
-            var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            var blob = new Blob([out], { type: 'application/octet-stream' });
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            var fileName = 'Verificacion';
-            if (selectedDate !== 'all') fileName += '_' + selectedDate;
-            else fileName += '_' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
-            a.download = fileName + '.xlsx';
-            a.click();
-            URL.revokeObjectURL(a.href);
-            showToast('📊 Excel exportado', 'success');
         };
 
         // ---- 更改地址 ----
@@ -1895,7 +1774,7 @@ function getScanStatusForCode(code) {
 
         // ---- 初始化 ----
         function init() {
-            console.log('🚀 Inicializando... (v5.0)');
+            console.log('🚀 Inicializando... (v5.0 optimizado)');
             loadLocalState();
             console.log('📂 Estado local:', { localMode: localMode, taskKeys: taskKeys, pendingKeys: pendingKeys, filterMode: filterMode, globalStatsCollapsed: globalStatsCollapsed, resetCollapsed: resetCollapsed, selectedAddresses: selectedAddresses, addressCollapsed: addressCollapsed, batches: batches });
 
