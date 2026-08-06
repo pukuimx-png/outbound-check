@@ -62,6 +62,16 @@ let state = {
 let recipients = [];
 let mainKeyOwners = {};
 
+// ===== 防抖保存（合并2秒内的写入）=====
+let saveTimeout = null;
+function debouncedSave() {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveTimeout = null;
+    saveStateToDB().catch(console.error);
+  }, 2000);
+}
+
 // ----- 自动清理（30天）-----
 const KEEP_DAYS = 30;
 function cleanOldData() {
@@ -90,7 +100,7 @@ function sendToAll(message) {
     if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
     const data = JSON.stringify({ type: 'state', state });
     wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(data); });
-    saveStateToDB().catch(console.error);
+    debouncedSave();
     return;
   }
 
@@ -118,10 +128,10 @@ function broadcastFullState() {
 function broadcastRecipients() {
   const data = JSON.stringify({ type: 'addresses', recipients });
   wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(data); });
-  saveStateToDB().catch(console.error);
+  debouncedSave();
 }
 
-// ----- 保存状态（重试）-----
+// ----- 保存状态（带重试）-----
 async function saveStateToDB(retries = 3) {
   let attempt = 0;
   while (attempt < retries) {
@@ -234,7 +244,7 @@ wss.on('connection', (ws) => {
               state.selectedMainKeys.push(code);
               sendToAll({ type: 'main_added', key: code, owner: deviceId });
               ws.send(JSON.stringify({ type: 'success', message: `✅ 已添加主码: ${code} (${group.items.length} 箱)` }));
-              saveStateToDB().catch(console.error);
+              debouncedSave();
               console.log(`✅ 主码添加成功: ${code}`);
             } else {
               const total = group.items.length;
@@ -279,7 +289,7 @@ wss.on('connection', (ws) => {
             }, 0);
             sendToAll({ type: 'sub_scanned', code: matchedItem.code, time: timeStr, scannedCount, total });
             ws.send(JSON.stringify({ type: 'success', message: `✅ 已扫描: ${code} (${scannedCount}/${total})` }));
-            saveStateToDB().catch(console.error);
+            debouncedSave();
             console.log(`✅ Subcódigo escaneado: ${code}, tiempo: ${timeStr}`);
           }
           break;
@@ -299,7 +309,7 @@ wss.on('connection', (ws) => {
           }
           sendToAll({ type: 'keys_released', keys: filteredKeys });
           ws.send(JSON.stringify({ type: 'success', message: `🔄 已释放: ${filteredKeys.join(', ')}` }));
-          saveStateToDB().catch(console.error);
+          debouncedSave();
           break;
         }
         case 'reset_all': {
@@ -327,7 +337,7 @@ wss.on('connection', (ws) => {
             batch.createdAt = now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
             state.batches.push(batch);
             sendToAll({ type: 'batch_added', batch });
-            saveStateToDB().catch(console.error);
+            debouncedSave();
           }
           break;
         }
@@ -467,5 +477,5 @@ loadStateFromDB().then(() => {
 
 setInterval(() => {
   const changed = cleanOldData();
-  if (changed) { saveStateToDB().catch(console.error); broadcastFullState(); }
+  if (changed) { debouncedSave(); broadcastFullState(); }
 }, 24 * 60 * 60 * 1000);
