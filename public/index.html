@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Verificación de Salida - PDA</title>
-    <!-- 保留 XLSX 库，异步加载 -->
-    <script defer src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
-    </script>
+    <script defer src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         /* ===== 样式完全保留原版，未修改 ===== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -118,11 +116,34 @@
         .export-date-selector { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
         .export-date-selector select { flex: 1; padding: 8px 12px; border-radius: 30px; border: 1px solid #cbd5e1; background: white; font-size: 14px; min-height: 40px; }
         .export-date-selector label { font-size: 14px; font-weight: 500; color: #1e293b; }
+        /* 加载占位样式 */
+        #loadingPlaceholder {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            font-size: 20px;
+            color: #94a3b8;
+        }
+        #loadingPlaceholder .spinner {
+            font-size: 48px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
     </style>
 </head>
 <body>
-    <!-- HTML 结构与原版完全相同，无改动 -->
     <div class="app" id="app">
+        <!-- 加载占位 -->
+        <div id="loadingPlaceholder">
+            <div class="spinner">⏳</div>
+            <div style="margin-top:12px;">Cargando datos...</div>
+        </div>
+
         <h1>
             📦 Verificación de Salida
             <span style="font-size:12px; color:#2563eb; cursor:pointer; touch-action:manipulation; margin:0 8px;" 
@@ -415,6 +436,7 @@
         var cancelOperatorBtn = document.getElementById('cancelOperatorBtn');
         var uploadZone = document.getElementById('uploadZone');
         var exportDateSelect = document.getElementById('exportDateSelect');
+        var loadingPlaceholder = document.getElementById('loadingPlaceholder');
 
         // ---- 辅助函数 ----
         function getAllGroups() {
@@ -424,6 +446,13 @@
             if (state.scanStatus[code] !== undefined) return state.scanStatus[code];
             if (state.historyScanStatus && state.historyScanStatus[code] !== undefined) return state.historyScanStatus[code];
             return false;
+        }
+
+        // 隐藏加载占位
+        function hideLoading() {
+            if (loadingPlaceholder) {
+                loadingPlaceholder.style.display = 'none';
+            }
         }
 
         // ---- 调试面板 ----
@@ -693,9 +722,10 @@
             triggerAutoScan();
         });
 
-        // ---- 扫描处理 ----
+        // ---- 扫描处理（含详细日志） ----
         window.handleScan = function() {
             var code = scanInput.value.trim();
+            console.log('🔹 handleScan llamado, código:', code);
             if (!code) {
                 showToast('Ingrese un código de barras', 'warning');
                 return;
@@ -704,45 +734,15 @@
             var extracted = extractCodeFromInput(code);
             console.log('📥 Original:', code, '→ Extraído:', extracted);
             if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.warn('⚠️ WebSocket no está abierto, estado:', ws ? ws.readyState : 'null');
                 showToast('❌ Servidor no conectado', 'error');
                 setTimeout(function() { scanInput.focus(); }, 100);
                 return;
             }
             var trimmed = extracted;
-            if (localMode === 'main') {
-                if (pendingKeys.includes(trimmed)) {
-                    showToast('⏳ Código ' + trimmed + ' ya está en la lista pendiente', 'warning', 2000);
-                    setTimeout(function() { scanInput.focus(); }, 100);
-                    return;
-                }
-                var filtered = getFilteredMainKeys();
-                if (filtered.length > 0 && !filtered.includes(trimmed)) {
-                    showToast('⚠️ Código ' + trimmed + ' no pertenece a la dirección seleccionada', 'warning', 3000);
-                    setTimeout(function() { scanInput.focus(); }, 100);
-                    return;
-                }
-                ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'main', deviceId: deviceId }));
-            } else {
-                var belongs = false;
-                for (var i = 0; i < taskKeys.length; i++) {
-                    var key = taskKeys[i];
-                    var g = state.groups.find(function(gr) { return gr.key === key; });
-                    if (g) {
-                        if (g.items.find(function(item) { return item.code === trimmed; })) { belongs = true; break; }
-                        var parts = trimmed.split('/');
-                        if (parts.length === 2 && parts[0] === key) {
-                            var idx = parseInt(parts[1]);
-                            if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) { belongs = true; break; }
-                        }
-                    }
-                }
-                if (!belongs) {
-                    showToast('❌ Subcódigo ' + trimmed + ' no pertenece a la tarea actual', 'error', 3000);
-                    setTimeout(function() { scanInput.focus(); }, 100);
-                    return;
-                }
-                ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: 'sub', deviceId: deviceId }));
-            }
+            console.log('📤 Enviando scan al servidor:', trimmed, 'modo:', localMode);
+            ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: localMode, deviceId: deviceId }));
+            console.log('✅ Mensaje enviado a las', new Date().toISOString());
         };
 
         function extractCodeFromInput(input) {
@@ -759,7 +759,7 @@
             }
         }
 
-        // ---- WebSocket（支持增量消息）----
+        // ---- WebSocket（支持增量消息 + 详细日志） ----
         function connectWebSocket() {
             if (ws && ws.readyState === WebSocket.OPEN) return;
             try {
@@ -773,14 +773,17 @@
                     connectionStatus.style.color = '#16a34a';
                     updateDebug('✅ WebSocket conectado!', 'success');
                     showToast('✅ Conectado al servidor', 'success', 2000);
+                    hideLoading();
                     setTimeout(function() { scanInput.focus(); }, 200);
                 };
                 ws.onmessage = function(event) {
+                    console.log('📨 Mensaje recibido (raw):', event.data);
                     try {
                         var data = JSON.parse(event.data);
-                        console.log('📨 Mensaje recibido:', data.type, data);
+                        console.log('📨 Mensaje parseado:', data.type, data);
                         // --- 处理全量状态（首次连接 / reset）---
                         if (data.type === 'state') {
+                            hideLoading();
                             state = data.state;
                             if (state.batches) batches = state.batches;
                             // 重置相关
@@ -984,6 +987,7 @@
                     }
                 };
                 ws.onclose = function(event) {
+                    console.warn('⚠️ WebSocket cerrado, código:', event.code, 'razón:', event.reason);
                     connectionStatus.textContent = '● Desconectado';
                     connectionStatus.style.color = '#dc2626';
                     var reason = event.reason || 'sin motivo';
@@ -993,8 +997,8 @@
                     reconnectTimer = setTimeout(connectWebSocket, 3000);
                 };
                 ws.onerror = function(err) {
+                    console.error('❌ WebSocket error:', err);
                     updateDebug('❌ Error WebSocket: ' + (err.message || 'desconocido'), 'error');
-                    console.error('❌ Error WebSocket:', err);
                     ws.close();
                 };
             } catch (err) {
