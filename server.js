@@ -62,7 +62,7 @@ let state = {
 let recipients = [];
 let mainKeyOwners = {};
 
-// ===== 防抖保存（合并2秒内的写入）=====
+// ========== 防抖保存（合并 2 秒内的写入）==========
 let saveTimeout = null;
 function debouncedSave() {
   if (saveTimeout) clearTimeout(saveTimeout);
@@ -71,6 +71,7 @@ function debouncedSave() {
     saveStateToDB().catch(console.error);
   }, 2000);
 }
+// =================================================
 
 // ----- 自动清理（30天）-----
 const KEEP_DAYS = 30;
@@ -131,7 +132,7 @@ function broadcastRecipients() {
   debouncedSave();
 }
 
-// ----- 保存状态（带重试）-----
+// ----- 保存状态（重试）-----
 async function saveStateToDB(retries = 3) {
   let attempt = 0;
   while (attempt < retries) {
@@ -359,7 +360,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ----- 导出辅助函数 -----
+// ----- 导出辅助函数（保持不变）-----
 function buildTxtContent(filteredGroups, addresses) {
   const lines = ['Lista de verificación', 'Generado: ' + new Date().toLocaleString()];
   if (addresses.length) lines.push('Destinatarios: ' + addresses.join(', '));
