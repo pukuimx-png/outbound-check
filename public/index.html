@@ -724,27 +724,35 @@
 
         // ---- 扫描处理（含详细日志） ----
         window.handleScan = function() {
-            var code = scanInput.value.trim();
-            console.log('🔹 handleScan llamado, código:', code);
-            if (!code) {
-                showToast('Ingrese un código de barras', 'warning');
-                return;
-            }
-            scanInput.value = '';
-            var extracted = extractCodeFromInput(code);
-            console.log('📥 Original:', code, '→ Extraído:', extracted);
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                console.warn('⚠️ WebSocket no está abierto, estado:', ws ? ws.readyState : 'null');
-                showToast('❌ Servidor no conectado', 'error');
-                setTimeout(function() { scanInput.focus(); }, 100);
-                return;
-            }
-            var trimmed = extracted;
-            console.log('📤 Enviando scan al servidor:', trimmed, 'modo:', localMode);
-            ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: localMode, deviceId: deviceId }));
-            console.log('✅ Mensaje enviado a las', new Date().toISOString());
-        };
-
+  var code = scanInput.value.trim();
+  console.log('🔹 handleScan llamado, código:', code);
+  if (!code) {
+    showToast('Ingrese un código de barras', 'warning');
+    return;
+  }
+  scanInput.value = '';
+  var extracted = extractCodeFromInput(code);
+  console.log('📥 Original:', code, '→ Extraído:', extracted);
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.warn('⚠️ WebSocket no está abierto, estado:', ws ? ws.readyState : 'null');
+    showToast('❌ Servidor no conectado', 'error');
+    setTimeout(function() { scanInput.focus(); }, 100);
+    return;
+  }
+  var trimmed = extracted;
+  console.log('📤 Enviando scan al servidor:', trimmed, 'modo:', localMode);
+  ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: localMode, deviceId: deviceId }));
+  
+  // ===== 新增即时反馈 =====
+  showToast('⏳ Escaneando...', 'info', 800);
+  scanInput.disabled = true;
+  setTimeout(function() {
+    scanInput.disabled = false;
+    scanInput.focus();
+  }, 500);
+  
+  console.log('✅ Mensaje enviado a las', new Date().toISOString());
+};
         function extractCodeFromInput(input) {
             if (!input) return input;
             var trimmed = input.trim();
