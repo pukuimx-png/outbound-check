@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Verificación de Salida - PDA</title>
-    <script defer src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script defer src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
+    </script>
     <style>
         /* ===== 样式完全保留原版，未修改 ===== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -250,7 +251,7 @@
             <button class="btn btn-success" id="exportTxtBtn">📄 TXT</button>
             <button class="btn btn-primary" id="exportExcelBtn">📊 Excel</button>
         </div>
-        <div class="version-tag">v5.0 - 20260805 (optimizado)</div>
+        <div class="version-tag">v5.0 - 20260806 (optimizado)</div>
     </div>
     <div class="modal-overlay" id="confirmModal" style="display:none;">
         <div class="modal">
@@ -275,9 +276,9 @@
 
     <script>
         // ============================================================
-        // v5.0 optimizado - Incremental WebSocket + Server-side gzip export
+        // v5.0 optimizado - 扫描速度优化 (JSON二维码 + 增量更新)
         // ============================================================
-        console.log('📦 Verificación de Salida v5.0 - 20260805');
+        console.log('📦 Verificación de Salida v5.0 - 20260806');
 
         // ---- 语言文本 ----
         var LANG = {
@@ -396,7 +397,6 @@
         var reconnectTimer = null;
         var toastTimer = null;
         var isInitialized = false;
-        var scanTimer = null;
         var resetHandledThisSession = false;
 
         // ---- DOM 引用 ----
@@ -702,57 +702,32 @@
             }
         }
 
-        // ---- 自动扫描 ----
-        function triggerAutoScan() {
-            var val = scanInput.value.trim();
-            if (val.length >= 3) {
-                if (scanTimer) clearTimeout(scanTimer);
-                scanTimer = setTimeout(function() {
-                    var current = scanInput.value.trim();
-                    if (current.length >= 3) {
-                        updateDebug('📤 Auto-scan trigger: ' + current, 'info');
-                        window.handleScan();
-                    }
-                }, 90);
-            }
-        }
-        scanInput.addEventListener('input', triggerAutoScan);
-        scanInput.addEventListener('keyup', function(e) {
-            if (e.key === 'Enter') return;
-            triggerAutoScan();
-        });
-
-        // ---- 扫描处理（含详细日志） ----
+        // ---- 扫描处理 ----
         window.handleScan = function() {
-  var code = scanInput.value.trim();
-  console.log('🔹 handleScan llamado, código:', code);
-  if (!code) {
-    showToast('Ingrese un código de barras', 'warning');
-    return;
-  }
-  scanInput.value = '';
-  var extracted = extractCodeFromInput(code);
-  console.log('📥 Original:', code, '→ Extraído:', extracted);
-  if (!ws || ws.readyState !== WebSocket.OPEN) {
-    console.warn('⚠️ WebSocket no está abierto, estado:', ws ? ws.readyState : 'null');
-    showToast('❌ Servidor no conectado', 'error');
-    setTimeout(function() { scanInput.focus(); }, 100);
-    return;
-  }
-  var trimmed = extracted;
-  console.log('📤 Enviando scan al servidor:', trimmed, 'modo:', localMode);
-  ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: localMode, deviceId: deviceId }));
-  
-  // ===== 新增即时反馈 =====
-  showToast('⏳ Escaneando...', 'info', 800);
-  scanInput.disabled = true;
-  setTimeout(function() {
-    scanInput.disabled = false;
-    scanInput.focus();
-  }, 500);
-  
-  console.log('✅ Mensaje enviado a las', new Date().toISOString());
-};
+            var code = scanInput.value.trim();
+            if (!code) {
+                showToast('Ingrese un código de barras', 'warning');
+                return;
+            }
+            scanInput.value = '';
+            var extracted = extractCodeFromInput(code);
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.warn('⚠️ WebSocket no está abierto, estado:', ws ? ws.readyState : 'null');
+                showToast('❌ Servidor no conectado', 'error');
+                setTimeout(function() { scanInput.focus(); }, 100);
+                return;
+            }
+            var trimmed = extracted;
+            ws.send(JSON.stringify({ type: 'scan', code: trimmed, mode: localMode, deviceId: deviceId }));
+            // 立即显示反馈，提升感知速度
+            showToast('⏳ Escaneando...', 'info', 800);
+            scanInput.disabled = true;
+            setTimeout(function() {
+                scanInput.disabled = false;
+                scanInput.focus();
+            }, 500);
+        };
+
         function extractCodeFromInput(input) {
             if (!input) return input;
             var trimmed = input.trim();
@@ -767,7 +742,7 @@
             }
         }
 
-        // ---- WebSocket（支持增量消息 + 详细日志） ----
+        // ---- WebSocket（支持增量消息，注释调试日志）----
         function connectWebSocket() {
             if (ws && ws.readyState === WebSocket.OPEN) return;
             try {
@@ -785,10 +760,11 @@
                     setTimeout(function() { scanInput.focus(); }, 200);
                 };
                 ws.onmessage = function(event) {
-                    console.log('📨 Mensaje recibido (raw):', event.data);
+                    // 生产环境注释掉调试日志，减少JS开销
+                    // console.log('📨 Mensaje recibido (raw):', event.data);
                     try {
                         var data = JSON.parse(event.data);
-                        console.log('📨 Mensaje parseado:', data.type, data);
+                        // console.log('📨 Mensaje parseado:', data.type, data);
                         // --- 处理全量状态（首次连接 / reset）---
                         if (data.type === 'state') {
                             hideLoading();
@@ -860,9 +836,8 @@
                             return;
                         }
                         if (data.type === 'sub_scanned') {
-                            state.scanStatus[data.code] = data.time;
-                            renderList();
-                            updateStatusBar();
+                            // 使用增量更新，不重绘整个列表
+                            updateSubScan(data.code, data.time);
                             return;
                         }
                         if (data.type === 'keys_released') {
@@ -893,7 +868,8 @@
                                 if (update.type === 'main_added') {
                                     state.selectedMainKeys.push(update.key);
                                 } else if (update.type === 'sub_scanned') {
-                                    state.scanStatus[update.code] = update.time;
+                                    // 也使用增量更新
+                                    updateSubScan(update.code, update.time);
                                 } else if (update.type === 'keys_released') {
                                     update.keys.forEach(function(key) {
                                         var idx = state.selectedMainKeys.indexOf(key);
@@ -914,7 +890,7 @@
                         // ---- 原有 success / error 处理 ----
                         if (data.type === 'success') {
                             var msg = data.message;
-                            console.log('🔍 Mensaje de éxito:', msg);
+                            // console.log('🔍 Mensaje de éxito:', msg);
                             var patchMatch = msg.match(/可补扫主码:\s*([^\s]+)\s*\(剩余\s*(\d+)\s*箱未扫\)/);
                             if (patchMatch) {
                                 var patchKey = patchMatch[1];
@@ -960,10 +936,12 @@
                             var subMatch = msg.match(/✅ 已扫描:\s*([^\s]+)\s*\((\d+)\/(\d+)\)/);
                             if (subMatch) {
                                 var code = subMatch[1];
-                                // 已通过增量更新处理，但为了兼容，也设置状态
-                                state.scanStatus[code] = true;
-                                renderList();
-                                updateStatusBar();
+                                // 可能已经在增量中更新，但以防万一
+                                if (!state.scanStatus[code]) {
+                                    state.scanStatus[code] = true;
+                                    renderList();
+                                    updateStatusBar();
+                                }
                                 showToast('Escaneado ' + code + ' (' + subMatch[2] + '/' + subMatch[3] + ')', 'success', 2000);
                                 scanInput.value = '';
                                 setTimeout(function() { scanInput.focus(); }, 100);
@@ -1195,7 +1173,7 @@
             updateStatusBar();
         };
 
-        // ---- 渲染清单 ----
+        // ---- 渲染清单（添加 data-code 属性） ----
         function renderList() {
             var groups = state.groups;
             if (groups.length === 0) {
@@ -1244,7 +1222,8 @@
                         displayCode = g.key + '/' + (j + 1);
                     }
                     var isActiveItem = isTask && localMode === 'sub';
-                    html += '<div class="list-item ' + (scanned ? 'scanned' : '') + (isActiveItem ? ' active' : '') + '">';
+                    // 添加 data-code 属性用于增量更新
+                    html += '<div class="list-item ' + (scanned ? 'scanned' : '') + (isActiveItem ? ' active' : '') + '" data-code="' + item.code + '">';
                     html += '<span>' + globalIdx + '</span>';
                     html += '<span>' + displayCode + '</span>';
                     html += '<span class="badge" style="opacity:0.5;">Subcódigo</span>';
@@ -1258,6 +1237,32 @@
                 html = '<div style="padding:20px;text-align:center;color:#94a3b8;">' + msg + '</div>';
             }
             listBody.innerHTML = html;
+        }
+
+        // ---- 增量更新子码扫描（不重建整个列表） ----
+        function updateSubScan(code, time) {
+            // 更新状态
+            state.scanStatus[code] = time;
+            // 更新该子码的 DOM 元素
+            var itemEl = document.querySelector('.list-item[data-code="' + code + '"]');
+            if (itemEl) {
+                var statusSpan = itemEl.querySelector('.status');
+                if (statusSpan) statusSpan.textContent = '✅';
+                itemEl.classList.add('scanned');
+            }
+            // 更新任务进度数字（不重绘列表）
+            var stats = getTaskStats();
+            mySubProgress.textContent = stats.scanned + '/' + stats.total;
+
+            // 更新全局统计数字（只改数字，不重建列表）
+            var global = getGlobalStats();
+            globalMainCount.textContent = global.totalMain;
+            globalTotalBox.textContent = global.totalBoxes;
+            globalScanned.textContent = global.completedMain + '/' + global.totalMain;
+            globalUnscanned.textContent = global.unscannedBoxes + '/' + global.totalBoxes;
+
+            // 保存本地状态
+            saveLocalState();
         }
 
         // ---- 构建分组 ----
@@ -1815,6 +1820,32 @@
 
             bindEvents();
 
+            // ---- 自动扫描（回车触发 + 50ms 后备） ----
+            var scanTimer = null;
+            function triggerAutoScan() {
+                var val = scanInput.value.trim();
+                if (val.length >= 3) {
+                    if (scanTimer) clearTimeout(scanTimer);
+                    scanTimer = setTimeout(function() {
+                        var current = scanInput.value.trim();
+                        if (current.length >= 3) {
+                            window.handleScan();
+                        }
+                    }, 50);
+                }
+            }
+            scanInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (scanTimer) clearTimeout(scanTimer);
+                    var val = scanInput.value.trim();
+                    if (val.length >= 3) {
+                        window.handleScan();
+                    }
+                }
+            });
+            scanInput.addEventListener('input', triggerAutoScan);
+
             fileInput.addEventListener('change', function(e) {
                 if (this.files.length) {
                     window.handleFile(this.files[0]);
@@ -1824,12 +1855,7 @@
             uploadZone.addEventListener('click', function() { fileInput.click(); });
 
             document.getElementById('scanBtn').addEventListener('click', window.handleScan);
-            scanInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    window.handleScan();
-                }
-            });
+            // 注意：scanInput 的 keydown 已绑定，此处不再重复绑定 Enter
 
             updateUI();
             updateStatusBar();
