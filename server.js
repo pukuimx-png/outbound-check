@@ -252,46 +252,52 @@ wss.on('connection', (ws) => {
               ws.send(JSON.stringify({ type: 'success', message: `✅ 可补扫主码: ${code} (剩余 ${total - scanned} 箱)` }));
             }
           } else if (mode === 'sub') {
-            console.log(`🔍 Buscando subcódigo: ${code} en keys:`, state.selectedMainKeys);
-            let found = false, matchedItem = null;
-            for (const key of state.selectedMainKeys) {
-              const g = state.groups.find(gr => gr.key === key);
-              if (!g) continue;
-              const item = g.items.find(i => i.code === code);
-              if (item) { found = true; matchedItem = item; break; }
-              const parts = code.split('/');
-              if (parts.length === 2 && parts[0] === key) {
-                const idx = parseInt(parts[1]);
-                if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) {
-                  found = true;
-                  matchedItem = g.items[idx - 1];
-                  break;
-                }
-              }
-            }
-            if (!found) {
-              console.warn(`❌ Subcódigo no encontrado: ${code}`);
-              ws.send(JSON.stringify({ type: 'error', message: `❌ 无效子码: ${code}` }));
-              return;
-            }
-            if (state.scanStatus[matchedItem.code]) {
-              console.warn(`⏳ Subcódigo ya escaneado: ${code}`);
-              ws.send(JSON.stringify({ type: 'error', message: `⏳ 子码 ${code} 已扫描过` }));
-              return;
-            }
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' });
-            state.scanStatus[matchedItem.code] = timeStr;
-            const scannedCount = Object.values(state.scanStatus).filter(v => v).length;
-            const total = state.selectedMainKeys.reduce((sum, k) => {
-              const g = state.groups.find(gr => gr.key === k);
-              return sum + (g ? g.items.length : 0);
-            }, 0);
-            sendToAll({ type: 'sub_scanned', code: matchedItem.code, time: timeStr, scannedCount, total });
-            ws.send(JSON.stringify({ type: 'success', message: `✅ 已扫描: ${code} (${scannedCount}/${total})` }));
-            debouncedSave();
-            console.log(`✅ Subcódigo escaneado: ${code}, tiempo: ${timeStr}`);
-          }
+  console.log(`🔍 Buscando subcódigo: ${code} en keys:`, state.selectedMainKeys);
+  let found = false, matchedItem = null;
+  for (const key of state.selectedMainKeys) {
+    const g = state.groups.find(gr => gr.key === key);
+    if (!g) continue;
+    const item = g.items.find(i => i.code === code);
+    if (item) { found = true; matchedItem = item; break; }
+    const parts = code.split('/');
+    if (parts.length === 2 && parts[0] === key) {
+      const idx = parseInt(parts[1]);
+      if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) {
+        found = true;
+        matchedItem = g.items[idx - 1];
+        break;
+      }
+    }
+  }
+  if (!found) {
+    console.warn(`❌ Subcódigo no encontrado: ${code}`);
+    ws.send(JSON.stringify({ type: 'error', message: `❌ 无效子码: ${code}` }));
+    return;
+  }
+  if (state.scanStatus[matchedItem.code]) {
+    console.warn(`⏳ Subcódigo ya escaneado: ${code}`);
+    ws.send(JSON.stringify({ type: 'error', message: `⏳ 子码 ${code} 已扫描过` }));
+    return;
+  }
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' });
+  state.scanStatus[matchedItem.code] = timeStr;
+  const scannedCount = Object.values(state.scanStatus).filter(v => v).length;
+  const total = state.selectedMainKeys.reduce((sum, k) => {
+    const g = state.groups.find(gr => gr.key === k);
+    return sum + (g ? g.items.length : 0);
+  }, 0);
+
+  // 快速广播：直接发送，不经过节流队列
+  const subMsg = JSON.stringify({ type: 'sub_scanned', code: matchedItem.code, time: timeStr, scannedCount, total });
+  wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(subMsg); });
+  ws.send(JSON.stringify({ type: 'success', message: `✅ 已扫描: ${code} (${scannedCount}/${total})` }));
+
+  // 立即异步保存，不延迟（替换原来的 debouncedSave()）
+  setImmediate(() => saveStateToDB().catch(console.error));
+
+  console.log(`✅ Subcódigo escaneado: ${code}, tiempo: ${timeStr}`);
+}
           break;
         }
         case 'release_keys': {
