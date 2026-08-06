@@ -62,18 +62,7 @@ let state = {
 let recipients = [];
 let mainKeyOwners = {};
 
-// ========== 防抖保存（合并 2 秒内的写入）==========
-let saveTimeout = null;
-function debouncedSave() {
-  if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    saveTimeout = null;
-    saveStateToDB().catch(console.error);
-  }, 2000);
-}
-// =================================================
-
-// ----- 自动清理（30天）-----
+// ========== 自动清理（保留最近30天） ==========
 const KEEP_DAYS = 30;
 function cleanOldData() {
   if (state.batches.length === 0) return false;
@@ -91,7 +80,17 @@ function cleanOldData() {
   return changed;
 }
 
-// ----- 增量广播（节流）-----
+// ========== 防抖保存（合并 2 秒内的写入） ==========
+let saveTimeout = null;
+function debouncedSave() {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveTimeout = null;
+    saveStateToDB().catch(console.error);
+  }, 2000);
+}
+
+// ========== 增量广播 + 节流 ==========
 let messageQueue = [];
 let flushTimer = null;
 
@@ -360,7 +359,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ----- 导出辅助函数（保持不变）-----
+// ----- 导出辅助函数 -----
 function buildTxtContent(filteredGroups, addresses) {
   const lines = ['Lista de verificación', 'Generado: ' + new Date().toLocaleString()];
   if (addresses.length) lines.push('Destinatarios: ' + addresses.join(', '));
@@ -378,73 +377,147 @@ function buildTxtContent(filteredGroups, addresses) {
   return lines.join('\n');
 }
 
-function buildExcelBuffer(filteredGroups, addresses, operator, vehicle) {
-  const wb = XLSX.utils.book_new();
-  const rows = [];
-  const now = new Date();
-  const exportDate = now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) + ' ' +
-                     now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' });
-  rows.push(['扫描员Escaneador:', operator || '']);
-  rows.push(['车牌Placa:', vehicle || '']);
-  rows.push(['导出日期Fecha:', exportDate]);
-  rows.push(['地址Direccion de entrega:', addresses.join(', ')]);
-  rows.push([]);
-  rows.push(['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima', '时间/Hora']);
-  let idx = 0;
-  for (const g of filteredGroups) {
-    const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
-    const totalBoxes = g.items.length;
-    const totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + (totalBoxes === 1 ? 'caja' : 'cajas');
-    idx++;
-    rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
-    for (let j = 0; j < g.items.length; j++) {
-      const item = g.items[j];
-      const displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
-      const scanned = state.scanStatus[item.code] || state.historyScanStatus[item.code] || false;
-      const scanTime = scanned && typeof scanned === 'string' ? scanned : (scanned ? '-' : '');
-      rows.push(['', '', '', j + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, '', scanTime]);
-    }
+// 构建 Excel（按操作员、车牌、地址、日期分组，每组分一个工作表）
+function buildExcelBuffer(dateFilter, addressFilter, operatorDefault, vehicleDefault) {
+  // 获取所有主码（当前+历史）
+  let allGroups = state.groups.concat(state.historyGroups);
+
+  // 日期筛选
+  if (dateFilter && dateFilter !== 'all') {
+    const validKeys = new Set();
+    state.batches.forEach(b => { if (b.createdAt === dateFilter) b.keys.forEach(k => validKeys.add(k)); });
+    allGroups = allGroups.filter(g => validKeys.has(g.key));
   }
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
-  XLSX.utils.book_append_sheet(wb, ws, 'Verificacion');
+
+  // 地址筛选
+  if (addressFilter && addressFilter.length > 0) {
+    allGroups = allGroups.filter(g => g.recipients && g.recipients.some(r => addressFilter.includes(r)));
+  }
+
+  if (allGroups.length === 0) return null;
+
+  // 查找主码所属批次
+  function findBatchForKey(key) {
+    for (const b of state.batches) {
+      if (b.keys.includes(key)) return b;
+    }
+    return null;
+  }
+
+  // 分组：按 operator|vehicle|addresses|date
+  const groupsMap = {};
+  for (const g of allGroups) {
+    const batch = findBatchForKey(g.key);
+    const op = batch ? (batch.operator || '') : (operatorDefault || '');
+    const veh = batch ? (batch.vehicle || '') : (vehicleDefault || '');
+    const addr = batch ? (batch.addresses || []) : (addressFilter || []);
+    const addrKey = addr.slice().sort().join(',');
+    const dateKey = batch ? (batch.createdAt || 'unknown') : 'unknown';
+    const groupKey = op + '|' + veh + '|' + addrKey + '|' + dateKey;
+    if (!groupsMap[groupKey]) {
+      groupsMap[groupKey] = {
+        operator: op,
+        vehicle: veh,
+        addresses: addrKey ? addrKey.split(',') : [],
+        date: dateKey,
+        groups: [],
+        batch: batch // 用于统一填充卡板名（若同一组有多个批次，取第一个）
+      };
+    }
+    groupsMap[groupKey].groups.push(g);
+  }
+
+  const wb = XLSX.utils.book_new();
+  let sheetIndex = 1;
+  for (const key in groupsMap) {
+    const group = groupsMap[key];
+    const rows = [];
+    const now = new Date();
+    const exportDate = now.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) + ' ' +
+                       now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mexico_City' });
+
+    rows.push(['扫描员Escaneador:', group.operator || '']);
+    rows.push(['车牌Placa:', group.vehicle || '']);
+    rows.push(['导出日期Fecha:', exportDate]);
+    rows.push(['地址Direccion de entrega:', group.addresses.join(', ')]);
+    rows.push([]);
+    rows.push(['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima', '时间/Hora']);
+
+    let idx = 0;
+    for (const g of group.groups) {
+      const typeLabel = g.type === 'fba' ? 'FBA货件' : '自定义';
+      const totalBoxes = g.items.length;
+      const totalText = '共' + totalBoxes + '箱/Total ' + totalBoxes + ' ' + (totalBoxes === 1 ? 'caja' : 'cajas');
+      idx++;
+      rows.push([idx, typeLabel, g.key, '', totalText, '', '']);
+
+      // 子码行
+      for (let j = 0; j < g.items.length; j++) {
+        const item = g.items[j];
+        const displayCode = g.type === 'fba' ? g.key + '/' + (j + 1) : item.code;
+        const scanned = state.scanStatus[item.code] || state.historyScanStatus[item.code] || false;
+        const scanTime = scanned && typeof scanned === 'string' ? scanned : (scanned ? '-' : '');
+        // 获取该主码对应的批次名称
+        const batch = findBatchForKey(g.key);
+        const tarimaName = batch ? (batch.name || 'Tarima') : 'Sin Tarima';
+        rows.push(['', '', '', j + 1, displayCode, scanned ? '是/Si' : '否/No', scanned ? 1 : 0, tarimaName, scanTime]);
+      }
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 15 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 12 }, { wch: 15 }, { wch: 15 }];
+    const cleanVehicle = group.vehicle.replace(/[\\:*?/\[\]]/g, '');
+    const sheetName = sheetIndex + '_' + (cleanVehicle || 'vehiculo') + '_' + (group.date || 'nodate');
+    XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+    sheetIndex++;
+  }
+
   return XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
 }
 
-function getFilteredGroups(date, addresses) {
-  let allGroups = state.groups.concat(state.historyGroups);
-  if (date && date !== 'all') {
-    const validKeys = new Set();
-    state.batches.forEach(b => { if (b.createdAt === date) b.keys.forEach(k => validKeys.add(k)); });
-    allGroups = allGroups.filter(g => validKeys.has(g.key));
-  }
-  if (addresses && addresses.length) {
-    allGroups = allGroups.filter(g => g.recipients && g.recipients.some(r => addresses.includes(r)));
-  }
-  return allGroups;
-}
-
-// ----- 导出路由（gzip压缩）-----
+// ----- 导出路由（支持 gzip 压缩）-----
 app.use(express.json());
+
 app.post('/export/:format', (req, res) => {
-  const format = req.params.format;
+  const format = req.params.format; // 'txt' 或 'excel'
   const { date, addresses, operator, vehicle } = req.body;
+
   if (!['txt', 'excel'].includes(format)) {
     return res.status(400).json({ error: 'Formato no soportado' });
   }
-  const filteredGroups = getFilteredGroups(date, addresses || []);
-  if (!filteredGroups.length) {
-    return res.status(404).json({ error: 'No hay datos para exportar' });
-  }
+
+  // 获取所有数据（但 buildExcelBuffer 内部会处理筛选）
   let fileBuffer, contentType, filename;
+
   try {
     if (format === 'txt') {
-      const text = buildTxtContent(filteredGroups, addresses || []);
+      // 简易 TXT 导出（复用之前逻辑，但为了简单，我们直接调用 buildExcelBuffer 的部分逻辑？不，TXT 我们简单处理）
+      // 这里为了节省篇幅，略去 TXT 的详细实现（但用户主要要 Excel，所以重点关注 Excel）
+      // 可以复用之前 txt 代码，或者暂不实现，但用户要求导出 TXT，我们一并提供。
+      // 简便起见，我们调用 buildTxtContent 函数（需要补充该函数，稍后添加）
+      // 先返回错误提示，但为了完整性，我加上一个简单的 TXT 生成
+      const allGroups = state.groups.concat(state.historyGroups);
+      // 筛选...
+      let filtered = allGroups;
+      if (date && date !== 'all') {
+        const validKeys = new Set();
+        state.batches.forEach(b => { if (b.createdAt === date) b.keys.forEach(k => validKeys.add(k)); });
+        filtered = filtered.filter(g => validKeys.has(g.key));
+      }
+      if (addresses && addresses.length) {
+        filtered = filtered.filter(g => g.recipients && g.recipients.some(r => addresses.includes(r)));
+      }
+      const text = buildTxtContent(filtered, addresses || []);
       fileBuffer = Buffer.from(text, 'utf-8');
       contentType = 'text/plain';
       filename = `Verificacion_${date || 'all'}.txt`;
     } else {
-      fileBuffer = buildExcelBuffer(filteredGroups, addresses || [], operator || '', vehicle || '');
+      // Excel
+      const excelBuffer = buildExcelBuffer(date, addresses || [], operator || '', vehicle || '');
+      if (!excelBuffer) {
+        return res.status(404).json({ error: 'No hay datos para exportar' });
+      }
+      fileBuffer = excelBuffer;
       contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       filename = `Verificacion_${date || 'all'}.xlsx`;
     }
@@ -452,6 +525,8 @@ app.post('/export/:format', (req, res) => {
     console.error('❌ Error generando archivo:', err);
     return res.status(500).json({ error: 'Error al generar el archivo' });
   }
+
+  // gzip 压缩
   zlib.gzip(fileBuffer, (err, compressed) => {
     if (err) {
       console.error('❌ Error comprimiendo:', err);
