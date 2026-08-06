@@ -1241,30 +1241,42 @@
 
         // ---- 增量更新子码扫描（不重建整个列表） ----
         function updateSubScan(code, time) {
-            // 更新状态
-            state.scanStatus[code] = time;
-            // 更新该子码的 DOM 元素
-            var itemEl = document.querySelector('.list-item[data-code="' + code + '"]');
-            if (itemEl) {
-                var statusSpan = itemEl.querySelector('.status');
-                if (statusSpan) statusSpan.textContent = '✅';
-                itemEl.classList.add('scanned');
-            }
-            // 更新任务进度数字（不重绘列表）
-            var stats = getTaskStats();
-            mySubProgress.textContent = stats.scanned + '/' + stats.total;
+    // 更新状态
+    state.scanStatus[code] = time;
+    // 更新该子码的 DOM 元素
+    var itemEl = document.querySelector('.list-item[data-code="' + code + '"]');
+    if (itemEl) {
+        var statusSpan = itemEl.querySelector('.status');
+        if (statusSpan) statusSpan.textContent = '✅';
+        itemEl.classList.add('scanned');
+    }
+    // 更新任务进度数字（不重绘列表）
+    var stats = getTaskStats();
+    mySubProgress.textContent = stats.scanned + '/' + stats.total;
 
-            // 更新全局统计数字（只改数字，不重建列表）
-            var global = getGlobalStats();
-            globalMainCount.textContent = global.totalMain;
-            globalTotalBox.textContent = global.totalBoxes;
-            globalScanned.textContent = global.completedMain + '/' + global.totalMain;
-            globalUnscanned.textContent = global.unscannedBoxes + '/' + global.totalBoxes;
+    // ---- 新增：检查任务是否全部完成 ----
+    if (localMode === 'sub' && taskKeys.length > 0 && stats.total > 0 && stats.scanned === stats.total) {
+        showToast('🎉 ¡Todas las subcódigos escaneadas! Cambiando a modo código', 'success', 3000);
+        localMode = 'main';
+        taskKeys = [];
+        // 更新状态栏和列表，确保界面刷新
+        updateStatusBar();
+        renderList();
+        // 保存本地状态
+        saveLocalState();
+        return; // 避免继续执行下面的全局统计更新
+    }
 
-            // 保存本地状态
-            saveLocalState();
-        }
+    // 如果未完成，继续更新其他统计（原有逻辑）
+    var global = getGlobalStats();
+    globalMainCount.textContent = global.totalMain;
+    globalTotalBox.textContent = global.totalBoxes;
+    globalScanned.textContent = global.completedMain + '/' + global.totalMain;
+    globalUnscanned.textContent = global.unscannedBoxes + '/' + global.totalBoxes;
 
+    // 保存本地状态
+    saveLocalState();
+}
         // ---- 构建分组 ----
         function buildGroupsFromRows(rows) {
             var raw = [];
