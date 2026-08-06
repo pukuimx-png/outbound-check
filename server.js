@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const zlib = require('zlib');
 const XLSX = require('xlsx');
 
-// ----- 连接 MongoDB -----
+// ----- 连接 MongoDB（增强配置）-----
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://pukuimx_db_user:Mx147258@cluster0.mrr1ndg.mongodb.net/?appName=Cluster0';
 console.log('🔑 MONGODB_URI:', MONGODB_URI.replace(/\/\/.*@/, '//<hidden>@'));
 
@@ -85,7 +85,6 @@ let messageQueue = [];
 let flushTimer = null;
 
 function sendToAll(message) {
-  // 全量同步（reset 或首次）直接发送 state
   if (message.type === 'full_state' || message.type === 'reset_all') {
     messageQueue = [];
     if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
@@ -194,6 +193,7 @@ function initState(groupsData) {
 
 // ===== WebSocket =====
 wss.on('connection', (ws) => {
+  console.log('🔌 Nuevo cliente conectado');
   ws.send(JSON.stringify({ type: 'state', state }));
   ws.send(JSON.stringify({ type: 'addresses', recipients }));
 
@@ -210,19 +210,23 @@ wss.on('connection', (ws) => {
         }
         case 'scan': {
           const { code, mode } = data;
+          console.log(`📥 Recibido scan: code=${code}, mode=${mode}, deviceId=${deviceId}`);
           if (mode === 'main') {
             const group = state.groups.find(g => g.key === code);
             if (!group) {
+              console.warn(`❌ 主码 no encontrado: ${code}`);
               ws.send(JSON.stringify({ type: 'error', message: `❌ 未找到主码: ${code}` }));
               return;
             }
             if (isMainCompleted(code)) {
-              ws.send(JSON.stringify({ type: 'error', message: `⏳ 主码 ${code} 已完成` }));
+              console.warn(`⏳ 主码 ${code} 已完成`);
+              ws.send(JSON.stringify({ type: 'error', message: `⏳ 主码 ${code} 已完成，无法再次添加` }));
               return;
             }
             const owner = mainKeyOwners[code];
             if (owner && owner !== deviceId) {
-              ws.send(JSON.stringify({ type: 'error', message: `❌ 主码 ${code} 已被锁定` }));
+              console.warn(`🔒 主码 ${code} 已被 ${owner} 锁定`);
+              ws.send(JSON.stringify({ type: 'error', message: `❌ 主码 ${code} 已被其他设备锁定` }));
               return;
             }
             if (!owner) {
@@ -231,12 +235,14 @@ wss.on('connection', (ws) => {
               sendToAll({ type: 'main_added', key: code, owner: deviceId });
               ws.send(JSON.stringify({ type: 'success', message: `✅ 已添加主码: ${code} (${group.items.length} 箱)` }));
               saveStateToDB().catch(console.error);
+              console.log(`✅ 主码添加成功: ${code}`);
             } else {
               const total = group.items.length;
               const scanned = group.items.filter(item => state.scanStatus[item.code]).length;
               ws.send(JSON.stringify({ type: 'success', message: `✅ 可补扫主码: ${code} (剩余 ${total - scanned} 箱)` }));
             }
           } else if (mode === 'sub') {
+            console.log(`🔍 Buscando subcódigo: ${code} en keys:`, state.selectedMainKeys);
             let found = false, matchedItem = null;
             for (const key of state.selectedMainKeys) {
               const g = state.groups.find(gr => gr.key === key);
@@ -247,15 +253,19 @@ wss.on('connection', (ws) => {
               if (parts.length === 2 && parts[0] === key) {
                 const idx = parseInt(parts[1]);
                 if (!isNaN(idx) && idx >= 1 && idx <= g.items.length) {
-                  found = true; matchedItem = g.items[idx - 1]; break;
+                  found = true;
+                  matchedItem = g.items[idx - 1];
+                  break;
                 }
               }
             }
             if (!found) {
+              console.warn(`❌ Subcódigo no encontrado: ${code}`);
               ws.send(JSON.stringify({ type: 'error', message: `❌ 无效子码: ${code}` }));
               return;
             }
             if (state.scanStatus[matchedItem.code]) {
+              console.warn(`⏳ Subcódigo ya escaneado: ${code}`);
               ws.send(JSON.stringify({ type: 'error', message: `⏳ 子码 ${code} 已扫描过` }));
               return;
             }
@@ -270,6 +280,7 @@ wss.on('connection', (ws) => {
             sendToAll({ type: 'sub_scanned', code: matchedItem.code, time: timeStr, scannedCount, total });
             ws.send(JSON.stringify({ type: 'success', message: `✅ 已扫描: ${code} (${scannedCount}/${total})` }));
             saveStateToDB().catch(console.error);
+            console.log(`✅ Subcódigo escaneado: ${code}, tiempo: ${timeStr}`);
           }
           break;
         }
