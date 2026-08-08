@@ -448,6 +448,24 @@ function buildExcelBuffer(dateFilter, addressFilter, operatorDefault, vehicleDef
     rows.push(['地址Direccion de entrega:', group.addresses.join(', ')]);
     rows.push([]);
     rows.push(['#', '分组类型/Tipo', '分组Key/Guia', '子项序号/No.', '子项条码/Codigo', '已扫描/Escaneado', '箱数/Cajas', '卡板/Tarima', '时间/Hora']);
+    
+     const batchMap = {};
+    for (const g of group.groups) {
+        const batch = findBatchForKey(g.key);
+        const batchName = batch ? (batch.name || 'Tarima') : 'Sin Tarima';
+        if (!batchMap[batchName]) batchMap[batchName] = [];
+        batchMap[batchName].push(g);
+    }
+    const sortedBatchNames = Object.keys(batchMap).sort((a, b) => {
+        const numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+        const numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+        return numA - numB;
+    });
+    const sortedGroups = [];
+    for (const batchName of sortedBatchNames) {
+        sortedGroups.push(...batchMap[batchName]);
+    }
+    group.groups = sortedGroups;
 
     let idx = 0;
     for (const g of group.groups) {
